@@ -1,0 +1,2 @@
+file(GLOB SOURCES_H   *.h)
+install(FILES ${SOURCES_H} DESTINATION ${ias_INCLUDE_INSTALL})
