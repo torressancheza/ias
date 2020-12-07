@@ -9,7 +9,9 @@
 
 ## Authors
 [Alejandro Torres-Sánchez](https://torres-sanchez.xyz/)
+
 Max Kerr Winter
+
 Guillaume Salbreux (The Francis Crick Institute)
 
 ## Licence
