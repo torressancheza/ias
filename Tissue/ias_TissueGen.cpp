@@ -73,6 +73,9 @@ namespace ias
             tissue->_cells.emplace_back(newcell);
         }
         
+        tissue->_tissFields.resize(_tissFieldNames.size());
+        tissue->_tissFieldNames = _tissFieldNames;
+        
         tissue->Update();
         
         return tissue;

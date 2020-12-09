@@ -18,7 +18,6 @@ namespace ias
     class Cell
     {
         public:
-            
             /** @name Constructor/destructor
             *  @{ */
             /*! @brief Constructor */

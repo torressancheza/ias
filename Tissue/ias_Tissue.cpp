@@ -14,8 +14,6 @@
 #include <Isorropia_EpetraPartitioner.hpp>
 #include <Isorropia_EpetraRedistributor.hpp>
 
-//#include "LinearElements.h"
-//#include "LoopSubdivision.h"
 #include "ias_Cell.h"
 #include "ias_Tissue.h"
 
@@ -55,7 +53,7 @@ namespace ias
         
         //[1] Check that all cells have the same fields. FIXME: this is mandatory right now but it could be easily changed
         int firstPart = _cells.size() > 0 ? _myPart : _nParts; //First partition with at least one cell (it could not be zero)
-        PMPI_Allreduce(MPI_IN_PLACE, &firstPart, 1, MPI_INT, MPI_MIN, _comm);
+        MPI_Allreduce(MPI_IN_PLACE, &firstPart, 1, MPI_INT, MPI_MIN, _comm);
         
         string cellNodeFieldNames0{};
         string cellGlobFieldNames0{};
@@ -129,6 +127,9 @@ namespace ias
         for(size_t i = 0; i < _globFieldNames.size(); i++)
             _mapGlobFieldNames[_globFieldNames[i]] = i;
         
+        _mapTissFieldNames.clear();
+        for(size_t i = 0; i < _tissFieldNames.size(); i++)
+            _mapTissFieldNames[_tissFieldNames[i]] = i;       
     }
 
     void Tissue::calculateCellCellAdjacency(double eps)
@@ -465,7 +466,7 @@ namespace ias
 
         _elems_inte.resize(_inters[getMyPart()].size());
         
-        bool change{false};
+        int change{};
         
         for(size_t inte = 0; inte < _inters[_myPart].size(); inte ++)
         {
@@ -534,12 +535,15 @@ namespace ias
 //                    }
 //                }
                 _elems_inte[inte] = elems_inte;
-                change = true;
+                change = 1;
             }
 
         }
-                
-        return change;
+        
+        
+        MPI_Allreduce(MPI_IN_PLACE, &change, 1, MPI_INT, MPI_MAX, _comm);
+        
+        return bool(change);
         
     }
 

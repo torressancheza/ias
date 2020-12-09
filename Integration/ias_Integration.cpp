@@ -15,13 +15,30 @@ namespace ias
         using namespace std;
         using Teuchos::rcp;
         
+        
+        _nodeDOFIdx.clear();
+        int n{};
+        for(auto s: _nodeDOFNames)
+        {
+            _nodeDOFIdx.push_back(_tissue->getNodeFieldIdx(s));
+            _mapNodeDOFNames[s] = n;
+        }
+        
+        _globDOFIdx.clear();
+        n = 0;
+        for(auto s: _globDOFNames)
+        {
+            _globDOFIdx.push_back(_tissue->getGlobFieldIdx(s));
+            _mapGlobDOFNames[s] = n;
+        }
+        
         int loc_nCells = _tissue->_cells.size();
         
-        if(_setNodeDOFs.size() == 0 and _setGlobDOFs.size() == 0)
+        if(_nodeDOFIdx.size() == 0 and _globDOFIdx.size() == 0)
             throw runtime_error("No degrees of freedom have been selected for the problem!");
         
-        int nNodeDOFs = _setNodeDOFs.size();
-        int nGlobDOFs = _setGlobDOFs.size();
+        int nNodeDOFs = _nodeDOFIdx.size();
+        int nGlobDOFs = _globDOFIdx.size();
         
         vector<int> loc_cellDOFSize;
         vector<int> glo_cellDOFSize;
@@ -111,6 +128,8 @@ namespace ias
         if(_singleIntegrand==nullptr)
             return;
         
+        fill(_globIntegrals.begin(), _globIntegrals.end(),0.0);
+        
         for(int n=0; n < int(_tissue->_cells.size());n++)
         {
             int glo_n = _tissue->getGlobalIdx(n);
@@ -122,10 +141,11 @@ namespace ias
             int nPts   = _tissue->_cells[n]->getNumberOfPoints();
             int nNodeFields = nodeFields.shape()[1];
             int nGlobFields = globFields.size();
-            int nNodeDOFs   = _setNodeDOFs.size();
-            int nGlobDOFs   = _setGlobDOFs.size();
+            int nNodeDOFs   = _nodeDOFIdx.size();
+            int nGlobDOFs   = _globDOFIdx.size();
             int eNNMax      = _tissue->_cells[n]->_bfs->getMaxNumberOfNeighbours();
             
+            fill(_cellIntegrals[n].begin(), _cellIntegrals[n].end(),0.0);
             #pragma omp parallel
             {
                 std::vector<double> v_inputFields(eNNMax*nNodeFields+nGlobFields,0.0);
@@ -147,6 +167,7 @@ namespace ias
                 singIntStr->globFields.resize(nGlobFields);
                 singIntStr->globFields = globFields;
                 singIntStr->pDim  = _tissue->_cells[n]->_bfs->getParametricDimension();
+                singIntStr->tissFields = _tissue->_tissFields;
 
                 singIntStr->vec_n.set_pointer(v_vec_n);
                 singIntStr->vec_g.set_pointer(v_vec_g);
@@ -159,6 +180,18 @@ namespace ias
                 singIntStr->globIntegrals.resize(_nGlobIntegrals,0.0);
                 singIntStr->cellIntegrals.resize(_nCellIntegrals,0.0);
                 
+                singIntStr->_nodeDOFNames = _nodeDOFNames;
+                singIntStr->_globDOFNames = _globDOFNames;
+                singIntStr->_mapNodeDOFNames = _mapNodeDOFNames;
+                singIntStr->_mapGlobDOFNames = _mapGlobDOFNames;
+                
+                singIntStr->_nodeFieldNames  = _tissue->_nodeFieldNames;
+                singIntStr->_globFieldNames  = _tissue->_globFieldNames;
+                singIntStr->_tissFieldNames  = _tissue->_tissFieldNames;
+                singIntStr->_mapNodeFieldNames = _tissue->_mapNodeFieldNames;
+                singIntStr->_mapGlobFieldNames = _tissue->_mapGlobFieldNames;
+                singIntStr->_mapTissFieldNames = _tissue->_mapTissFieldNames;
+
                 vector<double> globIntegrals(_nGlobIntegrals,0.0);
                 vector<double> cellIntegrals(_nCellIntegrals,0.0);
 
@@ -187,7 +220,8 @@ namespace ias
                     std::fill(v_outputVector.begin(),v_outputVector.end(),0.0);
                     std::fill(v_outputMatrix.begin(),v_outputMatrix.end(),0.0);
                     std::fill(singIntStr->globIntegrals.begin(),singIntStr->globIntegrals.end(),0.0);
-                    
+                    std::fill(singIntStr->cellIntegrals.begin(),singIntStr->cellIntegrals.end(),0.0);
+
                     auto& savedBFs_type = _savedBFs_single[_tissue->_cells[n]->_bfs->getElementType(e)];
                     for(size_t k=0; k < _wSamples_single.size(); k++)
                     {
@@ -224,10 +258,21 @@ namespace ias
                 #pragma omp critical
                 std::transform (_globIntegrals.begin(), _globIntegrals.end(), globIntegrals.begin(), _globIntegrals.begin(), std::plus<double>());
                 #pragma omp critical
-                _cellIntegrals[n] = cellIntegrals;
+                std::transform (_cellIntegrals[n].begin(), _cellIntegrals[n].end(), cellIntegrals.begin(), _cellIntegrals[n].begin(), std::plus<double>());
             }
         }
         
+//        double **sol_raw_ptr;
+//        _vector->ExtractView(&sol_raw_ptr);
+//        
+//        for(int i = 0; i < 198; i++)
+//        {
+//            if(abs(sol_raw_ptr[0][i] - sol_raw_ptr[0][199+i])>1.E-16)
+//                cout << i << " " << abs(sol_raw_ptr[0][i] - sol_raw_ptr[0][199+i]) << endl;
+//        }
+//        getchar();
+
+//        cout << *_vector << endl;
         MPI_Allreduce(MPI_IN_PLACE, _globIntegrals.data(), _nGlobIntegrals, MPI_DOUBLE, MPI_SUM, _tissue->_comm);
     }
 
@@ -243,13 +288,18 @@ namespace ias
         if(_doubleIntegrand==nullptr)
             return;
         
-        for(size_t inte = 0; inte < _tissue->_inters[_tissue->getMyPart()].size(); inte ++)
+        for(size_t inte = 0; inte < _tissue->_inters[_tissue->getMyPart()].size(); inte++)
         {
+            if(_tissue->_elems_inte.size() == 0)
+                throw runtime_error("Integration::computeDoubleIntegral: there are no interacting elements. Did you forget to call calculateInteractingElements?");
             
             int glo_n = _tissue->_inters[_tissue->getMyPart()][inte].first;
             int glo_m = _tissue->_inters[_tissue->getMyPart()][inte].second;
-
+            
             if (glo_n == glo_m)
+                continue;
+            
+            if(_tissue->_elems_inte[inte].size() == 0)
                 continue;
             
             RCP<Cell> cell_1 = _tissue->GetCell(glo_n);
@@ -269,8 +319,8 @@ namespace ias
             int nGlobFields_2  = globFields_2.size();
             int eNNMax_2       = cell_2->_bfs->getMaxNumberOfNeighbours();
 
-            int nNodeDOFs    = _setNodeDOFs.size();
-            int nGlobDOFs    = _setGlobDOFs.size();
+            int nNodeDOFs    = _nodeDOFIdx.size();
+            int nGlobDOFs    = _globDOFIdx.size();
             
             #pragma omp parallel
             {
@@ -302,6 +352,19 @@ namespace ias
                 singIntStr_1->mat_gg.resize(nGlobDOFs,nGlobDOFs);
                 singIntStr_1->globFields.resize(nGlobFields_1);
                 singIntStr_1->globFields = globFields_1;
+                singIntStr_1->tissFields = _tissue->_tissFields;
+
+                singIntStr_1->_nodeDOFNames = _nodeDOFNames;
+                singIntStr_1->_globDOFNames = _globDOFNames;
+                singIntStr_1->_mapNodeDOFNames = _mapNodeDOFNames;
+                singIntStr_1->_mapGlobDOFNames = _mapGlobDOFNames;
+                
+                singIntStr_1->_nodeFieldNames = _tissue->_nodeFieldNames;
+                singIntStr_1->_globFieldNames = _tissue->_globFieldNames;
+                singIntStr_1->_tissFieldNames = _tissue->_tissFieldNames;
+                singIntStr_1->_mapNodeFieldNames = _tissue->_mapNodeFieldNames;
+                singIntStr_1->_mapGlobFieldNames = _tissue->_mapGlobFieldNames;
+                singIntStr_1->_mapTissFieldNames = _tissue->_mapTissFieldNames;
 
                 std::vector<double> v_inputFields_2(eNNMax_2*nNodeFields_2+nGlobFields_2,0.0);
                 std::vector<double> v_outputVector_2(eNNMax_2*nNodeDOFs+nGlobDOFs,0.0);
@@ -331,6 +394,19 @@ namespace ias
                 singIntStr_2->mat_gg.resize(nGlobDOFs,nGlobDOFs);
                 singIntStr_2->globFields.resize(nGlobFields_2);
                 singIntStr_2->globFields = globFields_2;
+                singIntStr_2->tissFields = _tissue->_tissFields;
+
+                singIntStr_2->_nodeDOFNames = _nodeDOFNames;
+                singIntStr_2->_globDOFNames = _globDOFNames;
+                singIntStr_2->_mapNodeDOFNames = _mapNodeDOFNames;
+                singIntStr_2->_mapGlobDOFNames = _mapGlobDOFNames;
+                
+                singIntStr_2->_nodeFieldNames = _tissue->_nodeFieldNames;
+                singIntStr_2->_globFieldNames = _tissue->_globFieldNames;
+                singIntStr_2->_tissFieldNames = _tissue->_tissFieldNames;
+                singIntStr_2->_mapNodeFieldNames = _tissue->_mapNodeFieldNames;
+                singIntStr_2->_mapGlobFieldNames = _tissue->_mapGlobFieldNames;
+                singIntStr_2->_mapTissFieldNames = _tissue->_mapTissFieldNames;
                 
                 RCP<DoubleIntegralStr> doubIntStr   = rcp(new DoubleIntegralStr);
                 doubIntStr->fillStr1 = singIntStr_1;
@@ -590,17 +666,17 @@ namespace ias
 //            #pragma omp parallel for
             for(int i = 0; i < nPts; i++)
             {
-                for(size_t m=0; m < _setNodeDOFs.size(); m++)
+                for(size_t m=0; m < _nodeDOFIdx.size(); m++)
                 {
-                    dof_raw_ptr[i*nFields+_setNodeDOFs[m]] += scale * sol_raw_ptr[0][t];
+                    dof_raw_ptr[i*nFields+_nodeDOFIdx[m]] += scale * sol_raw_ptr[0][t];
                     t++;
                 }
             }
             
-            double* gdof_raw_ptr =cell->_globFields.data();
-            for(size_t g = 0; g < _setGlobDOFs.size(); g++)
+            double* gdof_raw_ptr = cell->_globFields.data();
+            for(size_t g = 0; g < _globDOFIdx.size(); g++)
             {
-                gdof_raw_ptr[_setGlobDOFs[g]] += scale * sol_raw_ptr[0][t];
+                gdof_raw_ptr[_globDOFIdx[g]] += scale * sol_raw_ptr[0][t];
                 t++;
             }
         }
@@ -626,17 +702,17 @@ namespace ias
 //            #pragma omp parallel for
             for(int i = 0; i < nPts; i++)
             {
-                for(size_t m=0; m < _setNodeDOFs.size(); m++)
+                for(size_t m=0; m < _nodeDOFIdx.size(); m++)
                 {
-                    dof_raw_ptr[i*nDOFs+_setNodeDOFs[m]] = scale * sol_raw_ptr[0][t];
+                    dof_raw_ptr[i*nDOFs+_nodeDOFIdx[m]] = scale * sol_raw_ptr[0][t];
                     t++;
                 }
             }
             
-            double* gdof_raw_ptr =cell->_globFields.data();
-            for(size_t g = 0; g < _setGlobDOFs.size(); g++)
+            double* gdof_raw_ptr = cell->_globFields.data();
+            for(size_t g = 0; g < _globDOFIdx.size(); g++)
             {
-                gdof_raw_ptr[_setGlobDOFs[g]] = scale * sol_raw_ptr[0][t];
+                gdof_raw_ptr[_globDOFIdx[g]] = scale * sol_raw_ptr[0][t];
                 t++;
             }
         }

@@ -89,12 +89,13 @@ int main(int argc, char *argv[])
     RCP<TissueGen> tissueGen = rcp( new TissueGen);
     tissueGen->setBasisFunctionType(BasisFunctionType::LoopSubdivision);
     tissueGen->addNodeField("c");
-    
+    tissueGen->addGlobField("P");
+
     RCP<Tissue> tissue = tissueGen->genRegularGridSpheres(2, 1, 1, 2.1, 2.1, 2.1, 1.0, 5);
     tissue->calculateCellCellAdjacency(0.5);
     tissue->updateGhosts();
 //    tissue->calculateInteractingElements(0.5);
-    tissue->saveVTK("Cell", "", 0);
+    tissue->saveVTK("Cell", "");
     
     for(auto cell: tissue->getLocalCells())
         cout << cell->getGlobField("cellId") << endl;
@@ -102,8 +103,8 @@ int main(int argc, char *argv[])
 
     RCP<Integration> integration = rcp(new Integration);
     integration->setTissue(tissue);
-    integration->setNodeDOFs({0,1,2});
-    integration->setGlobalDOFs({0});
+    integration->setNodeDOFs({"x","y","z"});
+    integration->setGlobalDOFs({"P"});
     integration->setSingleIntegrand(internal);
     integration->setDoubleIntegrand(interaction);
     integration->setNumberOfIntegrationPointsSingleIntegral(1);

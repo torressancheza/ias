@@ -6,6 +6,7 @@
 #include "ias_Tissue.h"
 #include "ias_TissueGen.h"
 #include "ias_Integration.h"
+#include "ias_AztecOO.h"
 #include "ias_NewtonRaphson.h"
 #include "ConfigFile.h"
 

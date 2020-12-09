@@ -80,8 +80,9 @@ namespace ias
         using namespace std;
         
         int nGlobFields = polydata->GetFieldData()->GetNumberOfArrays();
-        dofs.resize(nGlobFields);
         names.clear();
+        dofs.resize(nGlobFields);
+
         for(int i = 0; i < nGlobFields; i++)
         {
             string name = polydata->GetFieldData()->GetArrayName(i);
@@ -89,12 +90,8 @@ namespace ias
 
             //Insert nodeFields
             vtkSmartPointer<vtkDataArray> vtkglobFields = polydata->GetFieldData()->GetArray(name.c_str());
-
-            dofs.resize(nGlobFields);
             
-            double* raw_ptr = dofs.data();
-            for(int i = 0; i < nGlobFields; i++)
-                raw_ptr[i] = vtkglobFields->GetTuple(0)[i];
+            dofs(i) = vtkglobFields->GetTuple(0)[0];
         }
     }
 

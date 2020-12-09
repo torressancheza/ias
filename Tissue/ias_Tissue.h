@@ -1,6 +1,9 @@
 #ifndef _Tissue_h
 #define _Tissue_h
 
+#include <string>
+#include <iostream>
+
 #include <Teuchos_RCP.hpp>
 #include <Epetra_FECrsGraph.h>
 
@@ -62,8 +65,8 @@ namespace ias
         
             /** @name IO
             *  @{ */
-            void saveVTK(std::string prefix,std::string suffix, double time);
-            void loadVTK(std::string prefix,std::string suffix);
+            void saveVTK(std::string prefix,std::string suffix);
+            void loadVTK(std::string prefix,std::string suffix, BasisFunctionType bfType);
             /** @} */
 
             /** @name Cell-cell adjancency and distribution
@@ -145,24 +148,39 @@ namespace ias
                 return cell;
             }
         
-//            int getCellLabel(int i, idxType idtype = idxType::global)
-//            {
-//                if(idtype==idxType::global)
-//                {
-//                    int locid = getLocalIdx(i);
-//                    return _cellLabels[locid];
-//                }
-//                else
-//                {
-//                    return _cellLabels[i];
-//                }
-//            }
+            /*! @brief Get index of the node field*/
+            int getNodeFieldIdx(std::string fieldName)
+            {    return _mapNodeFieldNames[fieldName];    }
+            /*! @brief Get index of the global field*/
+            int getGlobFieldIdx(std::string fieldName)
+            {    return _mapGlobFieldNames[fieldName];    }
         
             std::vector<Teuchos::RCP<Cell>> getLocalCells()
             {    return _cells;    }
         
             void openPVD(std::string suffix);
             void closePVD();
+        
+            /*! @brief Get the ith global field */
+            double& getTissField(int i)
+            {
+                if(i<_tissFields.size())
+                    return _tissFields(i);
+                else
+                    throw std::runtime_error("Tissue::getTissField: Field " + std::to_string(i) + " is beyond the size of tissue fields (" + std::to_string(_tissFields.size())+"). Did you call Update()?");
+            }
+            /*! @brief Get the global field with the given label*/
+            double& getTissField(std::string label)
+            {
+                try
+                {
+                    return getTissField(_mapTissFieldNames.at(label));
+                }
+                catch (const std::out_of_range& error)
+                {
+                    throw std::runtime_error("Tissue::getTissField: Field \"" + label + "\" is not in the list of tissue fields. Did you call Update()?");
+                }
+            }
 
             /** @} */
 
@@ -188,12 +206,14 @@ namespace ias
         
             double _eps{};
         
-            std::vector<std::string> _nodeFieldNames; ///<List of names for the nodal fields (x,y,z always included)
-            std::vector<std::string> _globFieldNames;      ///<List of names for the global fields (cellId always included)
+            Tensor::tensor<double,1> _tissFields;
+        
+            std::vector<std::string> _nodeFieldNames;     ///<List of names for the nodal fields (x,y,z always included)
+            std::vector<std::string> _globFieldNames;     ///<List of names for the global fields (cellId always included)
+            std::vector<std::string> _tissFieldNames;     ///<List of names for the tissue fields
             std::map<std::string,int> _mapNodeFieldNames; ///<Map name to field number for nodal fields
             std::map<std::string,int> _mapGlobFieldNames; ///<Map name to field number for global fields
-        
-            std::string _pvdname{};
+            std::map<std::string,int> _mapTissFieldNames; ///<Map name to field number for tissue fields
             /** @} */
         
             /** @name Ghosts

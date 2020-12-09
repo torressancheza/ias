@@ -21,7 +21,9 @@ int main()
     
     RCP<Tissue> tissue = tissueGen->genRegularGridSpheres(2, 2, 2, 2.1, 2.1, 2.1, 1.0, 3);
     
-    tissue->saveVTK("Cell", "", 0);
+    tissue->saveVTK("Cell", "");
     
+    tissue->loadVTK("./", "Cell", BasisFunctionType::LoopSubdivision);
+
     MPI_Finalize();
 }

@@ -10,27 +10,36 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     
     tensor<double,2>& nborFields = fill->nborFields;
     tensor<double,1>& globFields = fill->globFields;
+    tensor<double,1>& tissFields = fill->tissFields;
 
-    double pressure = globFields(1);
+    double pressure = globFields(fill->idxGlobField("P"));
 
     tensor<double,1>   bfs(fill->bfs[0].data(),eNN);
     tensor<double,2>  Dbfs(fill->bfs[1].data(),eNN,2);
     tensor<double,2> DDbfs(fill->bfs[2].data(),eNN,3);
 
-    double deltat    = globFields(11);
-    double tension   = globFields(15) * deltat;
-    double viscosity = globFields(16);
-    double frictiont = globFields(17);
-    double frictionn = globFields(18);
-        
+    
+    double deltat    = tissFields(fill->idxTissField("deltat"));
+    
+    double tension   = globFields(fill->idxGlobField("tension")) * deltat;
+    double kappa     = globFields(fill->idxGlobField("kappa")) * deltat;
+    double viscosity = globFields(fill->idxGlobField("viscosity"));
+    double frictiont = globFields(fill->idxGlobField("frictiont"));
+    double frictionn = globFields(fill->idxGlobField("frictionn"));
+
     tensor<double,3> voigt = {{{1.0,0.0},{0.0,0.0}},
                               {{0.0,0.0},{0.0,1.0}},
                               {{0.0,1.0},{1.0,0.0}}};
     
+    int idx_x = fill->idxNodeField("x");
+    int idx_z = fill->idxNodeField("z");
+    int idx_vx = fill->idxNodeField("vx");
+    int idx_vz = fill->idxNodeField("vz");
+
     //[2] CALCULATIONS
     //[2.1] Geometry in the configuration at previous time-step
-    tensor<double,1>       x0 = bfs * nborFields(all,range(0,2));
-    tensor<double,2>      Dx0 = Dbfs.T() * nborFields(all,range(0,2));
+    tensor<double,1>       x0 = bfs * nborFields(all,range(idx_x,idx_z));
+    tensor<double,2>      Dx0 = Dbfs.T() * nborFields(all,range(idx_x,idx_z));
     tensor<double,1>   cross0 = Dx0(1,all) * antisym3D * Dx0(0,all);
     double               jac0 = sqrt(cross0*cross0);
     tensor<double,1>  normal0 = cross0/jac0;
@@ -39,9 +48,9 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     double               x0n0 = x0 * normal0;
 
     //[2.2] Geometry in current configuration
-    tensor<double,1>      x =  bfs * (nborFields(all,range(0,2))+nborFields(all,range(3,5)));
-    tensor<double,2>     Dx =  Dbfs.T() * (nborFields(all,range(0,2))+nborFields(all,range(3,5)));
-    tensor<double,2>    DDx = DDbfs.T() * (nborFields(all,range(0,2))+nborFields(all,range(3,5)));
+    tensor<double,1>      x =  bfs * (nborFields(all,range(idx_x,idx_z))+nborFields(all,range(idx_vx,idx_vz)));
+    tensor<double,2>     Dx =  Dbfs.T() * (nborFields(all,range(idx_x,idx_z))+nborFields(all,range(idx_vx,idx_vz)));
+    tensor<double,2>    DDx = DDbfs.T() * (nborFields(all,range(idx_x,idx_z))+nborFields(all,range(idx_vx,idx_vz)));
     tensor<double,1>  cross = Dx(1,all) * antisym3D * Dx(0,all);
     double             jac  = sqrt(cross*cross);
     tensor<double,1> normal = cross/jac;
@@ -95,7 +104,6 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     tensor<double,1> vt = proj0 * v;
     
     //Bending energy
-    double kappa = 0.1 * deltat;
     rhs_n += fill->w_sample *  kappa * H * (jac * dH + 0.5 * H * djac);
     A_nn  += fill->w_sample *  kappa * (jac * (H * ddH + outer(dH,dH)) + H * outer(dH,djac) + H * outer(djac,dH) + 0.5 * H * H * ddjac);
 
@@ -124,9 +132,9 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     
     fill->cellIntegrals[0] += fill->w_sample * jac;
 //    fill->cellIntegrals[0] += fill->w_sample / 3.0 * (jac * xn);
-    fill->cellIntegrals[1] += fill->w_sample * jac * (x0(0)+v(0));
-    fill->cellIntegrals[2] += fill->w_sample * jac * (x0(1)+v(1));
-    fill->cellIntegrals[3] += fill->w_sample * jac * (x0(2)+v(2));
+    fill->cellIntegrals[1] += fill->w_sample * jac * x(0);
+    fill->cellIntegrals[2] += fill->w_sample * jac * x(1);
+    fill->cellIntegrals[3] += fill->w_sample * jac * x(2);
     
     fill->cellIntegrals[4] += fill->w_sample * jac0;
     fill->cellIntegrals[5] += fill->w_sample * jac0 * x0(0);
@@ -145,11 +153,13 @@ void interaction(Teuchos::RCP<ias::DoubleIntegralStr> inter)
     using namespace Tensor;
 
     tensor<double,1> globFields = inter->fillStr1->globFields;
-    double deltat    = globFields(11);
-    double r0        = globFields(12);
-    double w         = globFields(13);
-    double D         = globFields(14) * deltat;
+    
+    double deltat    = inter->fillStr1->tissFields(inter->fillStr1->idxTissField("deltat"));
 
+    double r0        = globFields(inter->fillStr1->idxGlobField("intEL"));
+    double w         = globFields(inter->fillStr1->idxGlobField("intCL"));
+    double D         = globFields(inter->fillStr1->idxGlobField("intSt")) * deltat;
+    
     //First calculate distance to see if we can drop the points
     int eNN_1    = inter->fillStr1->eNN;
 
@@ -234,28 +244,6 @@ void interaction(Teuchos::RCP<ias::DoubleIntegralStr> inter)
         
         A_nn_12 += ww * ( pot * outer(djac_1,djac_2) + jac_1 * dpot/dist * outer(aux_1,djac_2) + jac_2 * dpot/dist * outer(djac_1,aux_2) + jac_1 * jac_2 * ((ddpot-dpot/dist)/(dist*dist) * outer(aux_1,aux_2) - dpot/dist * outer(bfs_1,outer(bfs_2,Identity(3))).transpose({0,2,1,3}) ));
         A_nn_21 += ww * ( pot * outer(djac_2,djac_1) + jac_2 * dpot/dist * outer(aux_2,djac_1) + jac_1 * dpot/dist * outer(djac_2,aux_1) + jac_1 * jac_2 * ((ddpot-dpot/dist)/(dist*dist) * outer(aux_2,aux_1) - dpot/dist * outer(bfs_2,outer(bfs_1,Identity(3))).transpose({0,2,1,3}) ));
-        
-//        auto s1 = A_nn_1.shape();
-//        auto s1_ = (ww * jac_2 * ( pot * ddjac_1 + dpot/dist * outer(aux_1,djac_1) + dpot/dist * outer(djac_1,aux_1) + jac_1 * ((ddpot-dpot/dist)/(dist*dist) * outer(aux_1,aux_1) + dpot/dist * outer(bfs_1,outer(bfs_1,Identity(3))).transpose({0,2,1,3}) ))).shape();
-//        auto s2 = A_nn_2.shape();
-//        auto s2_ = (ww * jac_1 * ( pot * ddjac_2 + dpot/dist * outer(aux_2,djac_2) + dpot/dist * outer(djac_2,aux_2) + jac_2 * ((ddpot-dpot/dist)/(dist*dist) * outer(aux_2,aux_2) + dpot/dist * outer(bfs_2,outer(bfs_2,Identity(3))).transpose({0,2,1,3}) ))).shape();
-//
-//        auto s12 = A_nn_12.shape();
-//        auto s12_ = (ww * ( pot * outer(djac_1,djac_2) + jac_1 * dpot/dist * outer(aux_1,djac_2) + jac_2 * dpot/dist * outer(djac_1,aux_2) + jac_1 * jac_2 * ((ddpot-dpot/dist)/(dist*dist) * outer(aux_1,aux_2) - dpot/dist * outer(bfs_1,outer(bfs_2,Identity(3))).transpose({0,2,1,3}) ))).shape();
-//
-//        auto s21 = A_nn_21.shape();
-//        auto s21_ = (ww * ( pot * outer(djac_2,djac_1) + jac_2 * dpot/dist * outer(aux_2,djac_1) + jac_1 * dpot/dist * outer(djac_2,aux_1) + jac_1 * jac_2 * ((ddpot-dpot/dist)/(dist*dist) * outer(aux_2,aux_1) - dpot/dist * outer(bfs_2,outer(bfs_1,Identity(3))).transpose({0,2,1,3}) ))).shape();
-        
-//        if(s1 != s1_)
-//            cout << "CAGADA 1" << endl;
-//        if(s2 != s2_)
-//            cout << "CAGADA 2" << endl;
-//        if(s12 != s12_)
-//            cout << "CAGADA 12 [" << s12[0] << " " << s12[1] << " " << s12[2] << " " << s12[3] << "] [" << s12_[0] << " " << s12_[1] << " " << s12_[2]<< " " << s12_[3] << "] " << eNN_1 << " " << eNN_2 << endl;
-//        if(s21 != s21_)
-//            cout << "CAGADA 21 [" << s21[0] << " " << s21[1] << " " << s21[2] << " " << s21[3] << "] [" << s21_[0] << " " << s21_[1] << " " << s21_[2]<< " " << s21_[3] << "] " << eNN_1 << " " << eNN_2 << endl;
-        
-//        inter->fillStr1->globIntegrals[3] += ww * jac_1 * jac_2 * pot / deltat;
     }
 }
 
@@ -274,14 +262,23 @@ void eulerianUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     tensor<double,2> nborFields   = fill->nborFields;
 
     tensor<double,1>&  globFields = fill->globFields;
-    tensor<double,1> V = globFields(range(4,6))/globFields(3) - globFields(range(8,10))/globFields(7);
+    tensor<double,1> V = globFields(range(fill->idxGlobField("X"),fill->idxGlobField("Z")))/globFields(fill->idxGlobField("A")) - globFields(range(fill->idxGlobField("X0"),fill->idxGlobField("Z0")))/globFields(fill->idxGlobField("A0"));
 
-    double deltat    = globFields(11);
-    double pressure2 = globFields(2);
+    tensor<double,1>&  tissFields = fill->tissFields;
+
+    double deltat    = tissFields(fill->idxTissField("deltat"));
+    double pressure2 = globFields(fill->idxGlobField("Paux"));
+    
+    int idx_x = fill->idxNodeField("x");
+    int idx_y = fill->idxNodeField("y");
+    int idx_z = fill->idxNodeField("z");
+    int idx_x0 = fill->idxNodeField("x0");
+    int idx_y0 = fill->idxNodeField("y0");
+    int idx_z0 = fill->idxNodeField("z0");
     
     //[2.1] Geometry in the configuration at previous time-step
-    tensor<double,1>      x0 = bfs * nborFields(all,range(6,8));
-    tensor<double,2>     Dx0 = Dbfs.T() * nborFields(all,range(6,8));
+    tensor<double,1>      x0 = bfs * nborFields(all,range(idx_x0,idx_z0));
+    tensor<double,2>     Dx0 = Dbfs.T() * nborFields(all,range(idx_x0,idx_z0));
     tensor<double,1>  cross0 = Dx0(1,all) * antisym3D * Dx0(0,all);
     double              jac0 = sqrt(cross0*cross0);
     tensor<double,1> normal0 = cross0/jac0;
@@ -290,8 +287,8 @@ void eulerianUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     tensor<double,1>      v = bfs * nborFields(all,range(3,5));
     
     //[2.2] Geometry in current configuration
-    tensor<double,1>      x = bfs * nborFields(all,range(0,2));
-    tensor<double,2>     Dx = Dbfs.T() * nborFields(all,range(0,2));
+    tensor<double,1>      x = bfs * nborFields(all,range(idx_x,idx_z));
+    tensor<double,2>     Dx = Dbfs.T() * nborFields(all,range(idx_x,idx_z));
     tensor<double,1>  cross = Dx(1,all) * antisym3D * Dx(0,all);
     double             jac  = sqrt(cross*cross);
     tensor<double,1> normal = cross/jac;
@@ -319,18 +316,12 @@ void eulerianUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     tensor<double,3>& A_ng  = fill->mat_ng;
     tensor<double,3>& A_gn  = fill->mat_gn;
 
-//    rhs_n += fill->w_sample * jac0 * outer(bfs,x-(x0+V+((v-V)*normal)*normal));
-    rhs_n += fill->w_sample * jac0 * outer(bfs,x-(x0+v));
+    rhs_n += fill->w_sample * jac0 * outer(bfs,x-(x0+V+((v-V)*normal0)*normal0));
     A_nn  += fill->w_sample * jac0 * outer(outer(bfs,bfs),Identity(3)).transpose({0,2,1,3});
-//    A_nn  -= fill->w_sample * jac0 * outer(bfs,(outer(dnormal*(v-V),normal)+(normal*(v-V))*dnormal).transpose({2,0,1}));
-
-    // [3.4] Volume constraint
+    
     rhs_n          += fill->w_sample * pressure2 * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
     rhs_g(0)       += deltat * (fill->w_sample * (jac * xn-jac0 * x0n0)/3.0);
-//
-//    if(fill->elemID==0 and fill->sampID==0 )
-//        rhs_g(0) -= deltat * 4./3.*M_PI/lifetime*deltat;
-//
+
     A_nn           += fill->w_sample * pressure2 * deltat / 3.0 * (ddjac * xn + outer(djac,outer(bfs,normal)) + outer(outer(bfs,normal),djac) + outer(djac,dnormal*x) + outer(dnormal*x,djac) + jac * outer(dnormal,bfs).transpose({0,1,3,2}) +  jac * outer(bfs,dnormal).transpose({0,3,1,2}) + jac * ddnormal * x);
     A_ng(all,all,0) += fill->w_sample            * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
     A_gn = A_ng.transpose({2,0,1});

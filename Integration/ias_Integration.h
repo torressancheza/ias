@@ -53,18 +53,17 @@ namespace ias
             {    _iPts_single = iPts_single;    }
             void setNumberOfIntegrationPointsDoubleIntegral(int iPts_intera)
             {    _iPts_intera = iPts_intera;    }
-
-            /*! @brief Set degrees of freedom at nodes
-             *  @param setDOFs set with degrees of freedom with labels corresponding to node fields in the tissue */
-            void setNodeDOFs(std::set<int> setDOFs)
+            /*! @brief Set degrees of freedom at nodes */
+            void setNodeDOFs(std::vector<std::string> setNodeDOFs)
             {
-                std::copy(setDOFs.begin(), setDOFs.end(), std::back_inserter(_setNodeDOFs));
+                for(auto s: setNodeDOFs)
+                    _nodeDOFNames.push_back(s);
             }
-            /*! @brief Set global degrees of freedom (per cell)
-             *  @param setglobDOFs set with degrees of freedom with labels corresponding to global fields in the tissue */
-            void setGlobalDOFs(std::set<int> setglobDOFs)
+            /*! @brief Set global degrees of freedom (per cell) */
+            void setGlobalDOFs(std::vector<std::string> setGlobDOFs)
             {
-                std::copy(setglobDOFs.begin(), setglobDOFs.end(), std::back_inserter(_setGlobDOFs));
+                for(auto s: setGlobDOFs)
+                    _globDOFNames.push_back(s);
             }
             /*! @brief Set function to be integrated at single-cell level  */
             void setSingleIntegrand( void (*singleIntegrand)(Teuchos::RCP<SingleIntegralStr>) )
@@ -158,7 +157,7 @@ namespace ias
         
             /** @name Get computed objects
             *  @{ */
-            const Teuchos::RCP<Epetra_LinearProblem> getLinearProblem () const
+            const Teuchos::RCP<Epetra_LinearProblem> getLinearProblem() const
             {    return _linProbl;    }
             const Teuchos::RCP<Epetra_FEVector> getVector() const
             {    return _vector;    }
@@ -206,8 +205,12 @@ namespace ias
             std::vector<std::vector<std::vector<std::vector<double>>>> _savedBFs_intera; ///< Basis functions at gauss points (iPts*(order+1)*eNN)
                     
             
-            std::vector<int> _setNodeDOFs;
-            std::vector<int> _setGlobDOFs;
+            std::vector<int> _nodeDOFIdx;
+            std::vector<int> _globDOFIdx;
+            std::vector<std::string> _nodeDOFNames;
+            std::vector<std::string> _globDOFNames;
+            std::map<std::string,int> _mapNodeDOFNames;
+            std::map<std::string,int> _mapGlobDOFNames;
         
             bool _globalVarInt{true};
             
