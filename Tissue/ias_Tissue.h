@@ -151,9 +151,12 @@ namespace ias
             /*! @brief Get index of the node field*/
             int getNodeFieldIdx(std::string fieldName)
             {    return _mapNodeFieldNames[fieldName];    }
-            /*! @brief Get index of the global field*/
-            int getGlobFieldIdx(std::string fieldName)
-            {    return _mapGlobFieldNames[fieldName];    }
+            /*! @brief Get index of the cell field*/
+            int getCellFieldIdx(std::string fieldName)
+            {    return _mapCellFieldNames[fieldName];    }
+            /*! @brief Get index of the tissue field*/
+            int getTissFieldIdx(std::string fieldName)
+            {    return _mapTissFieldNames[fieldName];    }
         
             std::vector<Teuchos::RCP<Cell>> getLocalCells()
             {    return _cells;    }
@@ -209,10 +212,10 @@ namespace ias
             Tensor::tensor<double,1> _tissFields;
         
             std::vector<std::string> _nodeFieldNames;     ///<List of names for the nodal fields (x,y,z always included)
-            std::vector<std::string> _globFieldNames;     ///<List of names for the global fields (cellId always included)
+            std::vector<std::string> _cellFieldNames;     ///<List of names for the global fields (cellId always included)
             std::vector<std::string> _tissFieldNames;     ///<List of names for the tissue fields
             std::map<std::string,int> _mapNodeFieldNames; ///<Map name to field number for nodal fields
-            std::map<std::string,int> _mapGlobFieldNames; ///<Map name to field number for global fields
+            std::map<std::string,int> _mapCellFieldNames; ///<Map name to field number for global fields
             std::map<std::string,int> _mapTissFieldNames; ///<Map name to field number for tissue fields
             /** @} */
         
@@ -228,24 +231,24 @@ namespace ias
             //Information sent by this process (it may contain repeated data) -> it has to be copied whenever information neeeds to be sent
             std::vector<double> _outGhost_nodeFields;   ///<Long vector with all DOFs to be sent to other partitions
             std::vector<double> _outGhost_nodeFields0;  ///<Long vector with all DOFs0 to be sent to other partitions
-            std::vector<double> _outGhost_globFields;   ///<Long vector with all globFields to be sent to other partitions
-            std::vector<double> _outGhost_globFields0;  ///<Long vector with all globFields0 to be sent to other partitions
+            std::vector<double> _outGhost_cellFields;   ///<Long vector with all globFields to be sent to other partitions
+            std::vector<double> _outGhost_cellFields0;  ///<Long vector with all globFields0 to be sent to other partitions
         
             std::vector<int> _outGhost_connec;  ///<Long vector with all globFields0 to be sent to other partitions
 
             std::vector<int> _outGhost_nodeFields_offsetCells;  ///<List kind of object containing the boundaries of Cells in _OutGhostDOFs and _OutGhostDOFs0
-            std::vector<int> _outGhost_globFields_offsetCells;  ///<List kind of object containing the boundaries of Cells in _OutGhostglobFields and _OutGhostglobFields0
+            std::vector<int> _outGhost_cellFields_offsetCells;  ///<List kind of object containing the boundaries of Cells in _OutGhostglobFields and _OutGhostglobFields0
             
             std::vector<int> _outGhost_connec_offsetCells;  ///<Long vector with all globFields0 to be sent to other partitions
         
             std::vector<int> _outGhost_nodeFields_offsetParts;  ///<List kind of object containing the boundaries of Cells in _OutGhostDOFs and _OutGhostDOFs0
-            std::vector<int> _outGhost_globFields_offsetParts;  ///<List kind of object containing the boundaries of Cells in _OutGhostglobFields and _OutGhostglobFields0
+            std::vector<int> _outGhost_cellFields_offsetParts;  ///<List kind of object containing the boundaries of Cells in _OutGhostglobFields and _OutGhostglobFields0
             
             std::vector<int> _outGhost_connec_offsetParts;  ///<Long vector with all globFields0 to be sent to other partitions
 
         
             std::vector<int> _outGhost_nodeFields_countParts;  ///<List kind of object containing the boundaries of Cells in _OutGhostDOFs and _OutGhostDOFs0
-            std::vector<int> _outGhost_globFields_countParts;  ///<List kind of object containing the boundaries of Cells in _OutGhostglobFields and _OutGhostglobFields0
+            std::vector<int> _outGhost_cellFields_countParts;  ///<List kind of object containing the boundaries of Cells in _OutGhostglobFields and _OutGhostglobFields0
             
             std::vector<int> _outGhost_connec_countParts;  ///<Long vector with all globFields0 to be sent to other partitions
 
@@ -253,24 +256,24 @@ namespace ias
             //Information received by this process (no repetition) -> cell DOFs point to this data (no copy needed)
             std::vector<double> _inGhost_nodeFields;   ///<Long vector with all DOFs received from other partitions
             std::vector<double> _inGhost_nodeFields0;  ///<Long vector with all DOFs0 received from other partitions
-            std::vector<double> _inGhost_globFields;   ///<Long vector with all globFields received from other partitions
-            std::vector<double> _inGhost_globFields0;  ///<Long vector with all globFields0 received from other partitions
+            std::vector<double> _inGhost_cellFields;   ///<Long vector with all globFields received from other partitions
+            std::vector<double> _inGhost_cellFields0;  ///<Long vector with all globFields0 received from other partitions
             
             std::vector<int> _inGhost_connec;          ///<Long vector with all DOFs received from other partitions
 
             std::vector<int> _inGhost_nodeFields_offsetCells; ///<List kind of object containing the boundaries of Cells in _InGhostDOFs and _InGhostDOFs0
-            std::vector<int> _inGhost_globFields_offsetCells; ///<List kind of object containing the boundaries of Cells in _InGhostglobFields and _InGhostglobFields0
+            std::vector<int> _inGhost_cellFields_offsetCells; ///<List kind of object containing the boundaries of Cells in _InGhostglobFields and _InGhostglobFields0
             
             std::vector<int> _inGhost_connec_offsetCells;  ///<Long vector with all globFields0 to be sent to other partitions
         
             std::vector<int> _inGhost_nodeFields_offsetParts; ///<List kind of object containing the boundaries of Cells in _OutGhostDOFs and _OutGhostDOFs0
-            std::vector<int> _inGhost_globFields_offsetParts; ///<List kind of object containing the boundaries of Cells in _OutGhostglobFields and _OutGhostglobFields0
+            std::vector<int> _inGhost_cellFields_offsetParts; ///<List kind of object containing the boundaries of Cells in _OutGhostglobFields and _OutGhostglobFields0
             
             std::vector<int> _inGhost_connec_offsetParts;  ///<Long vector with all globFields0 to be sent to other partitions
 
         
             std::vector<int> _inGhost_nodeFields_countParts;  ///<List kind of object containing the boundaries of Cells in _OutGhostDOFs and _OutGhostDOFs0
-            std::vector<int> _inGhost_globFields_countParts;  ///<List kind of object containing the boundaries of Cells in _OutGhostglobFields and _OutGhostglobFields0
+            std::vector<int> _inGhost_cellFields_countParts;  ///<List kind of object containing the boundaries of Cells in _OutGhostglobFields and _OutGhostglobFields0
 
             std::vector<int> _inGhost_connec_countParts;  ///<Long vector with all globFields0 to be sent to other partitions
 

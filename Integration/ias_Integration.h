@@ -59,11 +59,11 @@ namespace ias
                 for(auto s: setNodeDOFs)
                     _nodeDOFNames.push_back(s);
             }
-            /*! @brief Set global degrees of freedom (per cell) */
-            void setGlobalDOFs(std::vector<std::string> setGlobDOFs)
+            /*! @brief Set cell degrees of freedom (per cell) */
+            void setCellDOFs(std::vector<std::string> setGlobDOFs)
             {
                 for(auto s: setGlobDOFs)
-                    _globDOFNames.push_back(s);
+                    _cellDOFNames.push_back(s);
             }
             /*! @brief Set function to be integrated at single-cell level  */
             void setSingleIntegrand( void (*singleIntegrand)(Teuchos::RCP<SingleIntegralStr>) )
@@ -71,14 +71,18 @@ namespace ias
             /*! @brief Set function to be integrated as a double integral (over two cells)  */
             void setDoubleIntegrand(void (*doubleIntegrand)(Teuchos::RCP<DoubleIntegralStr>))
             {    _doubleIntegrand = doubleIntegrand;    }
-            /*! @brief Set number of global integrals */
-            void setNumberOfGlobalIntegrals(int nGlobIntegrals)
-            {    _nGlobIntegrals=nGlobIntegrals;    }
-            /*! @brief Set number of integrals to be stored at each cell */
-            void setNumberOfCellIntegrals(int nCellIntegrals)
-            {    _nCellIntegrals=nCellIntegrals;    }
-//            void setNumberOfCellInteractionFields(int nCellIntFields)
-//            {    _nCellIntFields=nCellIntFields;    }
+            /*! @brief Set global integrals */
+            void setTissIntegralFields(std::vector<std::string> names)
+            {
+                for(auto n: names)
+                    _tissIntegralNames.push_back(n);
+            }
+            /*! @brief Set integrals perr cell */
+            void setCellIntegralFields(std::vector<std::string> names)
+            {
+                for(auto n: names)
+                    _cellIntegralNames.push_back(n);
+            }
             /** @} */
 
             void Update();
@@ -119,13 +123,23 @@ namespace ias
             {    _matrix->PutScalar(scalar);    }
             void fillSolutionWithScalar(double scalar)
             {    _sol->PutScalar(scalar);    }
-            void InitialiseGlobalIntegrals(double scalar = 0.0)
-            {    std::fill(_globIntegrals.begin(),_globIntegrals.end(),scalar);    }
-
-            void InitialiseCellIntegrals(double scalar=0.0)
+            void InitialiseTissIntegralFields(double scalar = 0.0)
             {
-                for(int n = 0; n < _tissue->getLocalNumberOfCells(); n++)
-                    std::fill(_cellIntegrals[n].begin(),_cellIntegrals[n].end(),scalar);
+                for(int i = 0; i < int(_tissIntegralIdx.size()); i++)
+                    _tissue->getTissField(_tissIntegralIdx[i]) = scalar;
+            }
+
+            void InitialiseCellIntegralFields(double scalar=0.0)
+            {
+                for(int i = 0; i < int(_cellIntegralIdx.size()); i++)
+                {
+                    int n = 0;
+                    for(auto cell: _tissue->getLocalCells())
+                    {
+                        cell->getCellField(_cellIntegralIdx[i]) = scalar;
+                        n++;
+                    }
+                }
             }
             /** @} */
 
@@ -143,16 +157,6 @@ namespace ias
             /*! @brief Set vector (times scaling factor) to degrees of freedom */
             void setVecToDOFs(double scale=1.0)
             {    _setArrayToDOFs(_vector,scale);    }
-            void setCellIntegralToCellField(int i, int j)
-            {
-                for(int n = 0; n < _tissue->getLocalNumberOfCells(); n++)
-                    _tissue->_cells[n]->_globFields(i) = _cellIntegrals[n][j];
-            }
-            void addCellIntegralToCellField(int i, int j)
-            {
-                for(int n = 0; n < _tissue->getLocalNumberOfCells(); n++)
-                    _tissue->_cells[n]->_globFields(i) += _cellIntegrals[n][j];
-            }
             /** @} */
         
             /** @name Get computed objects
@@ -164,17 +168,11 @@ namespace ias
             const Teuchos::RCP<Epetra_FEVector> getSolution() const
             {    return _sol;    }
             /** @} */
-
-            double getGlobalIntegral(int i ) const
-            {    return _globIntegrals[i];  }
         
-            double getCellIntegral(int i, int j ) const
-            {    return _cellIntegrals[i][j];  }
+            void setCellDOFsInInteractions(bool cellDOFsInt)
+            {   _cellDOFsInt = cellDOFsInt;   }
         
-            void setGlobalVariablesInInteractions(bool globalVarInt)
-            {   _globalVarInt = globalVarInt;   }
-        
-//        private:
+        private:
         
             void (*_singleIntegrand)(Teuchos::RCP<SingleIntegralStr>) = nullptr;
             void (*_doubleIntegrand)(Teuchos::RCP<DoubleIntegralStr>) = nullptr;
@@ -188,14 +186,6 @@ namespace ias
             Teuchos::RCP<Epetra_FEVector>           _sol = Teuchos::null;
             Teuchos::RCP<Epetra_LinearProblem> _linProbl = Teuchos::null;
 
-            int _nGlobIntegrals{};
-            std::vector<double> _globIntegrals;     ///< Global integrals
-            int _nCellIntegrals{};
-            std::vector<std::vector<double>> _cellIntegrals; ///< Integrals to be computed per cell
-
-//            int _nCellIntFields;
-//            std::vector<Teuchos::RCP<Epetra_FEVector>> _cellIntFields; ///< Fields at Gauss points of the cell which depend on interations with other cells
-
             int _iPts_single{};
             std::vector<double> _wSamples_single;
             std::vector<std::vector<std::vector<std::vector<double>>>> _savedBFs_single; ///< Basis functions at gauss points (iPts*(order+1)*eNN)
@@ -206,19 +196,27 @@ namespace ias
                     
             
             std::vector<int> _nodeDOFIdx;
-            std::vector<int> _globDOFIdx;
+            std::vector<int> _cellDOFIdx;
             std::vector<std::string> _nodeDOFNames;
-            std::vector<std::string> _globDOFNames;
+            std::vector<std::string> _cellDOFNames;
             std::map<std::string,int> _mapNodeDOFNames;
-            std::map<std::string,int> _mapGlobDOFNames;
+            std::map<std::string,int> _mapCellDOFNames;
         
-            bool _globalVarInt{true};
+            std::vector<int> _cellIntegralIdx;
+            std::vector<int> _tissIntegralIdx;
+            std::vector<std::string> _cellIntegralNames;
+            std::vector<std::string> _tissIntegralNames;
+            std::map<std::string,int> _mapCellIntegralNames;
+            std::map<std::string,int> _mapTissIntegralNames;
+            
+            bool _cellDOFsInt{true};
             
             void (*_assembleElementalMatrix)(size_t offset_1, size_t offset_2, size_t eNN_1, size_t eNN_2, size_t nDOFs_1, size_t nDOFs_2, int* loc2glo_1, int* loc2glo_2, double* Ael, Teuchos::RCP<Epetra_FECrsMatrix> A) = nullptr;
             
             void _addArrayToDOFs(Teuchos::RCP<Epetra_FEVector> vec, double scale);
             void _setArrayToDOFs(Teuchos::RCP<Epetra_FEVector> vec, double scale);
-
+        
+            void _checkIntegralNames();
     };
 }
 

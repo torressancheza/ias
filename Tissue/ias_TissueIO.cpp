@@ -11,11 +11,11 @@ namespace ias
         
         #pragma omp parallel for
         for(int i = 0; i < int(_cells.size()); i++)
-            _cells[i]->saveVTK(prefix+std::to_string(int(_cells[i]->getGlobField("cellId")))+suffix+".vtu");
+            _cells[i]->saveVTK(prefix+std::to_string(int(_cells[i]->getCellField("cellId")))+suffix+".vtu");
 
         vector<int> cellLabels;
         for(auto c: _cells)
-            cellLabels.push_back(int(c->getGlobField("cellId")+0.5));
+            cellLabels.push_back(int(c->getCellField("cellId")+0.5));
         
         vector<int> glo_cellLbls(_nCells);
         MPI_Gatherv(cellLabels.data(), cellLabels.size(), MPI_INT, glo_cellLbls.data(), _nCellPart.data(), _offsetPart.data(), MPI_INT, 0, _comm);

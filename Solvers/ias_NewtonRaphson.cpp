@@ -52,8 +52,8 @@ namespace ias
                 _integration->fillVectorWithScalar(0.0);
                 _integration->fillSolutionWithScalar(0.0);
                 _integration->fillMatrixWithScalar(0.0);
-                _integration->InitialiseGlobalIntegrals(0.0);
-                _integration->InitialiseCellIntegrals(0.0);
+                _integration->InitialiseTissIntegralFields(0.0);
+                _integration->InitialiseCellIntegralFields(0.0);
                 _integration->computeSingleIntegral();
                 _integration->computeDoubleIntegral();
                 _integration->assemble();

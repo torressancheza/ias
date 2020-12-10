@@ -56,9 +56,9 @@ namespace ias
         MPI_Allreduce(MPI_IN_PLACE, &firstPart, 1, MPI_INT, MPI_MIN, _comm);
         
         string cellNodeFieldNames0{};
-        string cellGlobFieldNames0{};
+        string cellCellFieldNames0{};
         vector<char> v_cellNodeFieldNames0;
-        vector<char> v_cellGlobFieldNames0;
+        vector<char> v_cellCellFieldNames0;
         if(_myPart == firstPart)
         {
             for(int i = 0; i < int(_cells[0]->getNodeFieldNames().size())-1; i++)
@@ -66,28 +66,28 @@ namespace ias
             if(_cells[0]->getNodeFieldNames().size()>0)
                 cellNodeFieldNames0 += _cells[0]->getNodeFieldNames()[_cells[0]->getNodeFieldNames().size()-1];
             
-            for(int i = 0; i < int(_cells[0]->getGlobFieldNames().size())-1; i++)
-                cellGlobFieldNames0 += _cells[0]->getGlobFieldNames()[i] + ",";
-            if(_cells[0]->getGlobFieldNames().size()>0)
-                cellGlobFieldNames0 += _cells[0]->getGlobFieldNames()[_cells[0]->getGlobFieldNames().size()-1];
+            for(int i = 0; i < int(_cells[0]->getCellFieldNames().size())-1; i++)
+                cellCellFieldNames0 += _cells[0]->getCellFieldNames()[i] + ",";
+            if(_cells[0]->getCellFieldNames().size()>0)
+                cellCellFieldNames0 += _cells[0]->getCellFieldNames()[_cells[0]->getCellFieldNames().size()-1];
             
             v_cellNodeFieldNames0 = vector<char>(cellNodeFieldNames0.begin(),cellNodeFieldNames0.end());
-            v_cellGlobFieldNames0 = vector<char>(cellGlobFieldNames0.begin(),cellGlobFieldNames0.end());
+            v_cellCellFieldNames0 = vector<char>(cellCellFieldNames0.begin(),cellCellFieldNames0.end());
         }
         
         int sizeCellNodeFieldNames0 = v_cellNodeFieldNames0.size();
         MPI_Bcast(&sizeCellNodeFieldNames0, 1, MPI_INT, firstPart, _comm);
         v_cellNodeFieldNames0.resize(sizeCellNodeFieldNames0);
         
-        int sizeCellGlobFieldNames0 = v_cellGlobFieldNames0.size();
-        MPI_Bcast(&sizeCellGlobFieldNames0, 1, MPI_INT, firstPart, _comm);
-        v_cellGlobFieldNames0.resize(sizeCellGlobFieldNames0);
+        int sizeCellCellFieldNames0 = v_cellCellFieldNames0.size();
+        MPI_Bcast(&sizeCellCellFieldNames0, 1, MPI_INT, firstPart, _comm);
+        v_cellCellFieldNames0.resize(sizeCellCellFieldNames0);
         
         MPI_Bcast(v_cellNodeFieldNames0.data(), sizeCellNodeFieldNames0, MPI_CHAR, firstPart, _comm);
-        MPI_Bcast(v_cellGlobFieldNames0.data(), sizeCellGlobFieldNames0, MPI_CHAR, firstPart, _comm);
+        MPI_Bcast(v_cellCellFieldNames0.data(), sizeCellCellFieldNames0, MPI_CHAR, firstPart, _comm);
 
         cellNodeFieldNames0 = string(v_cellNodeFieldNames0.begin(),v_cellNodeFieldNames0.end());
-        cellGlobFieldNames0 = string(v_cellGlobFieldNames0.begin(),v_cellGlobFieldNames0.end());
+        cellCellFieldNames0 = string(v_cellCellFieldNames0.begin(),v_cellCellFieldNames0.end());
 
         for(size_t i = 0; i < _cells.size(); i++)
         {
@@ -100,32 +100,32 @@ namespace ias
             if(cellNodeFieldNames != cellNodeFieldNames0)
                 throw runtime_error("The nodal fields defined in cell " + to_string(getGlobalIdx(i)) + " (" + cellNodeFieldNames + ") do not coincide with those in cell " + to_string(getGlobalIdx(0)) + " (" + cellNodeFieldNames0+ ").");
             
-            string cellGlobFieldNames{};
-            for(int j = 0; j < int(_cells[i]->getGlobFieldNames().size())-1; j++)
-                cellGlobFieldNames += _cells[i]->getGlobFieldNames()[j] + ",";
-            if(_cells[i]->getGlobFieldNames().size()>0)
-                cellGlobFieldNames += _cells[i]->getGlobFieldNames()[_cells[i]->getGlobFieldNames().size()-1];
+            string cellCellFieldNames{};
+            for(int j = 0; j < int(_cells[i]->getCellFieldNames().size())-1; j++)
+                cellCellFieldNames += _cells[i]->getCellFieldNames()[j] + ",";
+            if(_cells[i]->getCellFieldNames().size()>0)
+                cellCellFieldNames += _cells[i]->getCellFieldNames()[_cells[i]->getCellFieldNames().size()-1];
             
-            if(cellGlobFieldNames != cellGlobFieldNames0)
-                throw runtime_error("The global fields defined in cell " + to_string(getGlobalIdx(i)) + " (" + cellGlobFieldNames + ") do not coincide with those in cell " + to_string(getGlobalIdx(0)) + " (" + cellGlobFieldNames0 + ").");
+            if(cellCellFieldNames != cellCellFieldNames0)
+                throw runtime_error("The global fields defined in cell " + to_string(getGlobalIdx(i)) + " (" + cellCellFieldNames + ") do not coincide with those in cell " + to_string(getGlobalIdx(0)) + " (" + cellCellFieldNames0 + ").");
         }
         
         std::istringstream ss_n(cellNodeFieldNames0);
-        std::istringstream ss_g(cellGlobFieldNames0);
+        std::istringstream ss_g(cellCellFieldNames0);
         std::string token;
 
         while(std::getline(ss_n, token, ','))
             _nodeFieldNames.push_back(token);
         while(std::getline(ss_g, token, ','))
-            _globFieldNames.push_back(token);
+            _cellFieldNames.push_back(token);
         
         _mapNodeFieldNames.clear();
         for(size_t i = 0; i < _nodeFieldNames.size(); i++)
             _mapNodeFieldNames[_nodeFieldNames[i]] = i;
         
-        _mapGlobFieldNames.clear();
-        for(size_t i = 0; i < _globFieldNames.size(); i++)
-            _mapGlobFieldNames[_globFieldNames[i]] = i;
+        _mapCellFieldNames.clear();
+        for(size_t i = 0; i < _cellFieldNames.size(); i++)
+            _mapCellFieldNames[_cellFieldNames[i]] = i;
         
         _mapTissFieldNames.clear();
         for(size_t i = 0; i < _tissFieldNames.size(); i++)
@@ -645,7 +645,7 @@ namespace ias
         {
             int locl = getLocalIdx(l);
             OutGhostnDOFs.push_back(_cells[locl]->getNumberOfNodeFields());
-            OutGhostnglobFields.push_back(_cells[locl]->getNumberOfGlobFields());
+            OutGhostnglobFields.push_back(_cells[locl]->getNumberOfCellFields());
             OutGhostnPts.push_back(_cells[locl]->getNumberOfPoints());
             OutGhostnElem.push_back(_cells[locl]->getNumberOfElements());
             OutGhostnVert.push_back(_cells[locl]->getNumberOfVerticesPerElement());
@@ -669,83 +669,83 @@ namespace ias
 
         //Create exporters
         _outGhost_nodeFields_offsetCells.resize(_outGhostLabels.size()+1);
-        _outGhost_globFields_offsetCells.resize(_outGhostLabels.size()+1);
+        _outGhost_cellFields_offsetCells.resize(_outGhostLabels.size()+1);
         _outGhost_connec_offsetCells.resize(_outGhostLabels.size()+1);
-        _outGhost_nodeFields_offsetCells[0] = _outGhost_globFields_offsetCells[0] = _outGhost_connec_offsetCells[0] = 0;
+        _outGhost_nodeFields_offsetCells[0] = _outGhost_cellFields_offsetCells[0] = _outGhost_connec_offsetCells[0] = 0;
         for(int i = 0; i < _outGhostOffsetPart[_nParts]; i++)
         {
             _outGhost_nodeFields_offsetCells[i+1] = _outGhost_nodeFields_offsetCells[i] + OutGhostnPts[i] * OutGhostnDOFs[i];
-            _outGhost_globFields_offsetCells[i+1] = _outGhost_globFields_offsetCells[i] + OutGhostnglobFields[i];
+            _outGhost_cellFields_offsetCells[i+1] = _outGhost_cellFields_offsetCells[i] + OutGhostnglobFields[i];
             _outGhost_connec_offsetCells[i+1] = _outGhost_connec_offsetCells[i] + OutGhostnElem[i] * OutGhostnVert[i];
         }
         
         _outGhost_nodeFields_offsetParts.resize(_nParts+1);
-        _outGhost_globFields_offsetParts.resize(_nParts+1);
+        _outGhost_cellFields_offsetParts.resize(_nParts+1);
         _outGhost_connec_offsetParts.resize(_nParts+1);
-        _outGhost_nodeFields_offsetParts[0] = _outGhost_globFields_offsetParts[0] = _outGhost_connec_offsetParts[0] = 0;
+        _outGhost_nodeFields_offsetParts[0] = _outGhost_cellFields_offsetParts[0] = _outGhost_connec_offsetParts[0] = 0;
         for(int i = 0; i < _nParts; i++ )
         {
             _outGhost_nodeFields_offsetParts[i+1] = _outGhost_nodeFields_offsetCells[_outGhostOffsetPart[i+1]];
-            _outGhost_globFields_offsetParts[i+1] = _outGhost_globFields_offsetCells[_outGhostOffsetPart[i+1]];
+            _outGhost_cellFields_offsetParts[i+1] = _outGhost_cellFields_offsetCells[_outGhostOffsetPart[i+1]];
             _outGhost_connec_offsetParts[i+1]     = _outGhost_connec_offsetCells[_outGhostOffsetPart[i+1]];
         }
         
         _outGhost_nodeFields_countParts.resize(_nParts);
-        _outGhost_globFields_countParts.resize(_nParts);
+        _outGhost_cellFields_countParts.resize(_nParts);
         _outGhost_connec_countParts.resize(_nParts);
         for(int i = 0; i < _nParts; i++ )
         {
             _outGhost_nodeFields_countParts[i] = _outGhost_nodeFields_offsetParts[i+1] - _outGhost_nodeFields_offsetParts[i];
-            _outGhost_globFields_countParts[i] = _outGhost_globFields_offsetParts[i+1] - _outGhost_globFields_offsetParts[i];
+            _outGhost_cellFields_countParts[i] = _outGhost_cellFields_offsetParts[i+1] - _outGhost_cellFields_offsetParts[i];
             _outGhost_connec_countParts[i]    =  _outGhost_connec_offsetParts[i+1] - _outGhost_connec_offsetParts[i];
         }
 
         
         _outGhost_nodeFields.resize(_outGhost_nodeFields_offsetCells[_outGhostLabels.size()]);
         _outGhost_nodeFields0.resize(_outGhost_nodeFields_offsetCells[_outGhostLabels.size()]);
-        _outGhost_globFields.resize(_outGhost_globFields_offsetCells[_outGhostLabels.size()]);
-        _outGhost_globFields0.resize(_outGhost_globFields_offsetCells[_outGhostLabels.size()]);
+        _outGhost_cellFields.resize(_outGhost_cellFields_offsetCells[_outGhostLabels.size()]);
+        _outGhost_cellFields0.resize(_outGhost_cellFields_offsetCells[_outGhostLabels.size()]);
         _outGhost_connec.resize(_outGhost_connec_offsetCells[_outGhostLabels.size()]);
 
         //Create importers
         //Dimensionalise tensors for incoming and outgoing data
         _inGhost_nodeFields_offsetCells.resize(_inGhostLabels.size()+1);
-        _inGhost_globFields_offsetCells.resize(_inGhostLabels.size()+1);
+        _inGhost_cellFields_offsetCells.resize(_inGhostLabels.size()+1);
         _inGhost_connec_offsetCells.resize(_inGhostLabels.size()+1);
-        _inGhost_nodeFields_offsetCells[0] = _inGhost_globFields_offsetCells[0] = _inGhost_connec_offsetCells[0] = 0;
+        _inGhost_nodeFields_offsetCells[0] = _inGhost_cellFields_offsetCells[0] = _inGhost_connec_offsetCells[0] = 0;
         for(int i = 0; i < _inGhostOffsetPart[_nParts]; i++)
         {
             _inGhost_nodeFields_offsetCells[i+1] = _inGhost_nodeFields_offsetCells[i] + InGhostnPts[i] * InGhostnDOFs[i];
-            _inGhost_globFields_offsetCells[i+1] = _inGhost_globFields_offsetCells[i] + InGhostnglobFields[i];
+            _inGhost_cellFields_offsetCells[i+1] = _inGhost_cellFields_offsetCells[i] + InGhostnglobFields[i];
             _inGhost_connec_offsetCells[i+1] = _inGhost_connec_offsetCells[i] + InGhostnElem[i] * InGhostnVert[i];
         }
         
         _inGhost_nodeFields_offsetParts.resize(_nParts+1);
-        _inGhost_globFields_offsetParts.resize(_nParts+1);
+        _inGhost_cellFields_offsetParts.resize(_nParts+1);
         _inGhost_connec_offsetParts.resize(_nParts+1);
-        _inGhost_nodeFields_offsetParts[0] = _inGhost_globFields_offsetParts[0] = _inGhost_connec_offsetParts[0] = 0;
+        _inGhost_nodeFields_offsetParts[0] = _inGhost_cellFields_offsetParts[0] = _inGhost_connec_offsetParts[0] = 0;
         for(int i = 0; i < _nParts; i++ )
         {
             _inGhost_nodeFields_offsetParts[i+1] = _inGhost_nodeFields_offsetCells[_inGhostOffsetPart[i+1]];
-            _inGhost_globFields_offsetParts[i+1] = _inGhost_globFields_offsetCells[_inGhostOffsetPart[i+1]];
+            _inGhost_cellFields_offsetParts[i+1] = _inGhost_cellFields_offsetCells[_inGhostOffsetPart[i+1]];
             _inGhost_connec_offsetParts[i+1] = _inGhost_connec_offsetCells[_inGhostOffsetPart[i+1]];
         }
         
         _inGhost_nodeFields_countParts.resize(_nParts);
-        _inGhost_globFields_countParts.resize(_nParts);
+        _inGhost_cellFields_countParts.resize(_nParts);
         _inGhost_connec_countParts.resize(_nParts);
         for(int i = 0; i < _nParts; i++ )
         {
             _inGhost_nodeFields_countParts[i] = _inGhost_nodeFields_offsetParts[i+1] - _inGhost_nodeFields_offsetParts[i];
-            _inGhost_globFields_countParts[i] = _inGhost_globFields_offsetParts[i+1] - _inGhost_globFields_offsetParts[i];
+            _inGhost_cellFields_countParts[i] = _inGhost_cellFields_offsetParts[i+1] - _inGhost_cellFields_offsetParts[i];
             _inGhost_connec_countParts[i] = _inGhost_connec_offsetParts[i+1] - _inGhost_connec_offsetParts[i];
         }
         
         
         _inGhost_nodeFields.resize(_inGhost_nodeFields_offsetCells[_inGhostLabels.size()]);
         _inGhost_nodeFields0.resize(_inGhost_nodeFields_offsetCells[_inGhostLabels.size()]);
-        _inGhost_globFields.resize(_inGhost_globFields_offsetCells[_inGhostLabels.size()]);
-        _inGhost_globFields0.resize(_inGhost_globFields_offsetCells[_inGhostLabels.size()]);
+        _inGhost_cellFields.resize(_inGhost_cellFields_offsetCells[_inGhostLabels.size()]);
+        _inGhost_cellFields0.resize(_inGhost_cellFields_offsetCells[_inGhostLabels.size()]);
         _inGhost_connec.resize(_inGhost_connec_offsetCells[_inGhostLabels.size()]);
 
         
@@ -758,14 +758,14 @@ namespace ias
             _inGhostCells[i]->_nodeFields.set_pointer(&_inGhost_nodeFields[_inGhost_nodeFields_offsetCells[i]]);
             _inGhostCells[i]->_nodeFields.resize(InGhostnPts[i], InGhostnDOFs[i]);
 
-            _inGhostCells[i]->_globFields.set_pointer(&_inGhost_globFields[_inGhost_globFields_offsetCells[i]]);
-            _inGhostCells[i]->_globFields.resize(InGhostnglobFields[i]);
+            _inGhostCells[i]->_cellFields.set_pointer(&_inGhost_cellFields[_inGhost_cellFields_offsetCells[i]]);
+            _inGhostCells[i]->_cellFields.resize(InGhostnglobFields[i]);
             
             _inGhostCells[i]->_connec.set_pointer(&_inGhost_connec[_inGhost_connec_offsetCells[i]]);
             _inGhostCells[i]->_connec.resize(InGhostnElem[i],InGhostnVert[i]);
 
-            _inGhostCells[i]->_globFieldNames = _nodeFieldNames;
-            _inGhostCells[i]->_globFieldNames = _globFieldNames;
+            _inGhostCells[i]->_cellFieldNames = _nodeFieldNames;
+            _inGhostCells[i]->_cellFieldNames = _cellFieldNames;
             
             _inGhostCells[i]->_bfType = static_cast<BasisFunctionType>(InGhostBFType[i]);
         }
@@ -787,7 +787,7 @@ namespace ias
             }
             if(updateGlobalFields)
             {
-                std::memcpy(&_outGhost_globFields[_outGhost_globFields_offsetCells[i]],_cells[loc]->_globFields.data(),(_cells[loc]->getNumberOfGlobFields())*sizeof(double));
+                std::memcpy(&_outGhost_cellFields[_outGhost_cellFields_offsetCells[i]],_cells[loc]->_cellFields.data(),(_cells[loc]->getNumberOfCellFields())*sizeof(double));
             }
             
             if(updateConnectivity)
@@ -806,8 +806,8 @@ namespace ias
         }
         if(updateGlobalFields)
         {
-            MPI_Alltoallv(_outGhost_globFields.data(), _outGhost_globFields_countParts.data(), _outGhost_globFields_offsetParts.data(), MPI_DOUBLE, _inGhost_globFields.data(), _inGhost_globFields_countParts.data(), _inGhost_globFields_offsetParts.data(), MPI_DOUBLE, _comm);
-            MPI_Alltoallv(_outGhost_globFields0.data(), _outGhost_globFields_countParts.data(), _outGhost_globFields_offsetParts.data(), MPI_DOUBLE, _inGhost_globFields0.data(), _inGhost_globFields_countParts.data(), _inGhost_globFields_offsetParts.data(), MPI_DOUBLE, _comm);
+            MPI_Alltoallv(_outGhost_cellFields.data(), _outGhost_cellFields_countParts.data(), _outGhost_cellFields_offsetParts.data(), MPI_DOUBLE, _inGhost_cellFields.data(), _inGhost_cellFields_countParts.data(), _inGhost_cellFields_offsetParts.data(), MPI_DOUBLE, _comm);
+            MPI_Alltoallv(_outGhost_cellFields0.data(), _outGhost_cellFields_countParts.data(), _outGhost_cellFields_offsetParts.data(), MPI_DOUBLE, _inGhost_cellFields0.data(), _inGhost_cellFields_countParts.data(), _inGhost_cellFields_offsetParts.data(), MPI_DOUBLE, _comm);
         }
         if(updateConnectivity)
         {

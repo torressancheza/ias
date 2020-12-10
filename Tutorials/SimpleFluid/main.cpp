@@ -98,8 +98,6 @@ int main(int argc, char **argv)
         config.readInto(restart, "restart");
         config.readInto(resLocation, "resLocation");
         config.readInto(resFileName, "resFileName");
-
-
     }
     //---------------------------------------------------------------------------
     
@@ -108,36 +106,17 @@ int main(int argc, char **argv)
     {
         RCP<TissueGen> tissueGen = rcp( new TissueGen);
         tissueGen->setBasisFunctionType(BasisFunctionType::LoopSubdivision);
-        tissueGen->addNodeField("vx");
-        tissueGen->addNodeField("vy");
-        tissueGen->addNodeField("vz");
-        tissueGen->addNodeField("x0");
-        tissueGen->addNodeField("y0");
-        tissueGen->addNodeField("z0");
-        tissueGen->addNodeField("vx0");
-        tissueGen->addNodeField("vy0");
-        tissueGen->addNodeField("vz0");
         
-        tissueGen->addGlobField("P");
-        tissueGen->addGlobField("Paux");
-        tissueGen->addGlobField("A");
-        tissueGen->addGlobField("X");
-        tissueGen->addGlobField("Y");
-        tissueGen->addGlobField("Z");
-        tissueGen->addGlobField("A0");
-        tissueGen->addGlobField("X0");
-        tissueGen->addGlobField("Y0");
-        tissueGen->addGlobField("Z0");
-        tissueGen->addGlobField("intEL");
-        tissueGen->addGlobField("intCL");
-        tissueGen->addGlobField("intSt");
-        tissueGen->addGlobField("tension");
-        tissueGen->addGlobField("kappa");
-        tissueGen->addGlobField("viscosity");
-        tissueGen->addGlobField("frictiont");
-        tissueGen->addGlobField("frictionn");
-        tissueGen->addGlobField("P0");
-        tissueGen->addGlobField("Paux0");
+        tissueGen->addNodeFields({"vx","vy","vz"});
+        tissueGen->addNodeFields({"x0","y0","z0"});
+        tissueGen->addNodeFields({"vx0","vy0","vz0"});
+
+        tissueGen->addCellFields({"P","Paux","P0","Paux0"});
+        tissueGen->addCellFields({"A","X","Y","Z"});
+        tissueGen->addCellFields({"A0","X0","Y0","Z0"});
+        tissueGen->addCellFields({"Ai"});
+
+        tissueGen->addCellFields({"intEL","intCL","intSt","tension","kappa","viscosity","frictiont","frictionn"});
         
         tissueGen->addTissField("time");
         tissueGen->addTissField("deltat");
@@ -155,14 +134,14 @@ int main(int argc, char **argv)
         
         for(auto cell: tissue->getLocalCells())
         {
-            cell->getGlobField("intEL") = intEL;
-            cell->getGlobField("intCL") = intCL;
-            cell->getGlobField("intSt") = intSt;
-            cell->getGlobField("kappa") = kappa;
-            cell->getGlobField("tension") = tension;
-            cell->getGlobField("viscosity") = viscosity;
-            cell->getGlobField("frictiont") = frictiont;
-            cell->getGlobField("frictionn") = frictionn;
+            cell->getCellField("intEL") = intEL;
+            cell->getCellField("intCL") = intCL;
+            cell->getCellField("intSt") = intSt;
+            cell->getCellField("kappa") = kappa;
+            cell->getCellField("tension") = tension;
+            cell->getCellField("viscosity") = viscosity;
+            cell->getCellField("frictiont") = frictiont;
+            cell->getCellField("frictionn") = frictionn;
         }
     }
     else
@@ -190,20 +169,19 @@ int main(int argc, char **argv)
     RCP<Integration> physicsIntegration = rcp(new Integration);
     physicsIntegration->setTissue(tissue);
     physicsIntegration->setNodeDOFs({"vx","vy","vz"});
-    physicsIntegration->setGlobalDOFs({"P"});
+    physicsIntegration->setCellDOFs({"P"});
     physicsIntegration->setSingleIntegrand(internal);
     physicsIntegration->setDoubleIntegrand(interaction);
     physicsIntegration->setNumberOfIntegrationPointsSingleIntegral(3);
     physicsIntegration->setNumberOfIntegrationPointsDoubleIntegral(3);
-    physicsIntegration->setNumberOfCellIntegrals(8);
-    physicsIntegration->setNumberOfGlobalIntegrals(4);
-    physicsIntegration->setGlobalVariablesInInteractions(false);
+    physicsIntegration->setCellIntegralFields({"A","X","Y","Z","A0","X0","Y0","Z0","Ai"});
+    physicsIntegration->setCellDOFsInInteractions(false);
     physicsIntegration->Update();
 
     RCP<Integration> eulerianIntegration = rcp(new Integration);
     eulerianIntegration->setTissue(tissue);
     eulerianIntegration->setNodeDOFs({"x","y","z"});
-    eulerianIntegration->setGlobalDOFs({"Paux"});
+    eulerianIntegration->setCellDOFs({"Paux"});
     eulerianIntegration->setSingleIntegrand(eulerianUpdate);
     eulerianIntegration->setNumberOfIntegrationPointsSingleIntegral(3);
     eulerianIntegration->setNumberOfIntegrationPointsDoubleIntegral(1);
@@ -266,8 +244,8 @@ int main(int argc, char **argv)
             cell->getNodeField("vy0") = cell->getNodeField("vy");
             cell->getNodeField("vz0") = cell->getNodeField("vz");
             
-            cell->getGlobField("P0")    = cell->getGlobField("P");
-            cell->getGlobField("Paux0") = cell->getGlobField("Paux");
+            cell->getCellField("P0")    = cell->getCellField("P");
+            cell->getCellField("Paux0") = cell->getCellField("Paux");
         }
         tissue->updateGhosts();
         
@@ -302,29 +280,14 @@ int main(int argc, char **argv)
         
         if ( conv )
         {
-            
-            physicsIntegration->setCellIntegralToCellField(3, 0);
-            physicsIntegration->setCellIntegralToCellField(4, 1);
-            physicsIntegration->setCellIntegralToCellField(5, 2);
-            physicsIntegration->setCellIntegralToCellField(6, 3);
-            physicsIntegration->setCellIntegralToCellField(7, 4);
-            physicsIntegration->setCellIntegralToCellField(8, 5);
-            physicsIntegration->setCellIntegralToCellField(9, 6);
-            physicsIntegration->setCellIntegralToCellField(10, 7);
-            
+            int nIter = physicsNewtonRaphson->getNumberOfIterations();
             
             for(auto cell: tissue->getLocalCells())
             {
-                double A  = cell->getGlobField("A");
-                double A0 = cell->getGlobField("A0");
-                tensor<double,1> V(3);
-                V(0) = cell->getGlobField("X")/A - cell->getGlobField("X0")/A0;
-                V(1) = cell->getGlobField("Y")/A - cell->getGlobField("Y0")/A0;
-                V(2) = cell->getGlobField("Z")/A - cell->getGlobField("Z0")/A0;
+                cout << cell->getCellField("A") << " " << cell->getCellField("X") << " " << cell->getCellField("Y") << " " << cell->getCellField("Z") << endl;
+                cout << cell->getCellField("A0") << " " << cell->getCellField("X0") << " " << cell->getCellField("Y0") << " " << cell->getCellField("Z0") << endl;
+                cout << cell->getCellField("Ai") << endl;
             }
-            
-            int nIter = physicsNewtonRaphson->getNumberOfIterations();
-            
             //---------------------------------------------------------------------------
             if(tissue->getMyPart()==0)
                 cout << "Solving for displacement along the normal" << endl;
@@ -351,13 +314,13 @@ int main(int argc, char **argv)
                     cell->getNodeField("vz") *= deltat;
                 }
 
-                if(tissue->getMyPart() == 0)
-                {
-                    fEner.open (fEnerName,ios::app);
-                    fEner << setprecision(8) << scientific;
-                    fEner << time << " " << deltat << " " << physicsIntegration->getGlobalIntegral(0) << " " << physicsIntegration->getGlobalIntegral(1) << " " << physicsIntegration->getGlobalIntegral(2) << " " << physicsIntegration->getGlobalIntegral(3) << endl;
-                    fEner.close();
-                }
+//                if(tissue->getMyPart() == 0)
+//                {
+//                    fEner.open (fEnerName,ios::app);
+//                    fEner << setprecision(8) << scientific;
+//                    fEner << time << " " << deltat << " " << physicsIntegration->getGlobalIntegral(0) << " " << physicsIntegration->getGlobalIntegral(1) << " " << physicsIntegration->getGlobalIntegral(2) << " " << physicsIntegration->getGlobalIntegral(3) << endl;
+//                    fEner.close();
+//                }
 
                 if(nIter < nr_maxite)
                 {
@@ -382,7 +345,7 @@ int main(int argc, char **argv)
                     cell->getNodeField("x") = cell->getNodeField("x0");
                     cell->getNodeField("y") = cell->getNodeField("y0");
                     cell->getNodeField("z") = cell->getNodeField("z0");
-                    cell->getGlobField("Paux") = cell->getGlobField("Paux0");
+                    cell->getCellField("Paux") = cell->getCellField("Paux0");
 
                 }
                 tissue->updateGhosts();
@@ -397,7 +360,7 @@ int main(int argc, char **argv)
                 cell->getNodeField("vx") = cell->getNodeField("vx0") * stepFac;
                 cell->getNodeField("vy") = cell->getNodeField("vy0") * stepFac;
                 cell->getNodeField("vz") = cell->getNodeField("vz0") * stepFac;
-                cell->getGlobField("P")  = cell->getGlobField("P0");
+                cell->getCellField("P")  = cell->getCellField("P0");
             }
             tissue->updateGhosts();
         }

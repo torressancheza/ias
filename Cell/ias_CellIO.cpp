@@ -126,7 +126,7 @@ namespace ias
         polydata->SetCells(type,cells);
         
         InsertNodeDataInVTK(polydata, _nodeFields, _nodeFieldNames);
-        InsertGlobDataInVTK(polydata, _globFields, _globFieldNames);
+        InsertGlobDataInVTK(polydata, _cellFields, _cellFieldNames);
 
         vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
         writer->SetInputData(polydata);
@@ -167,7 +167,7 @@ namespace ias
         }
         
         GetNodeDataInVTK(_nodeFields, _nodeFieldNames, polydata);
-        GetGlobDataInVTK(_globFields, _globFieldNames, polydata);
+        GetGlobDataInVTK(_cellFields, _cellFieldNames, polydata);
     }
 
 
@@ -205,7 +205,7 @@ namespace ias
         if(withNodeFields)
             InsertNodeDataInVTK(polydata, _nodeFields,  _nodeFieldNames);
         if(withGlobFields)
-            InsertGlobDataInVTK(polydata, _globFields, _globFieldNames);
+            InsertGlobDataInVTK(polydata, _cellFields, _cellFieldNames);
         
         vtkSmartPointer<vtkDataSetSurfaceFilter> surfaceFilter = vtkSmartPointer<vtkDataSetSurfaceFilter>::New();
         surfaceFilter->SetInputData(polydata);

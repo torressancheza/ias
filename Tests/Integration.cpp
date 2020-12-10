@@ -19,7 +19,7 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
         
         tensor<double,2> nborFields   = fill->nborFields;
 
-        tensor<double,1>&  globFields = fill->globFields;
+        tensor<double,1>&  globFields = fill->cellFields;
 
         double pressure = globFields(0);
 
@@ -59,10 +59,10 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
         
         //[3] OUTPUT
         tensor<double,2>& rhs_n = fill->vec_n;
-        tensor<double,1>& rhs_g = fill->vec_g;
+        tensor<double,1>& rhs_g = fill->vec_c;
         tensor<double,4>& A_nn  = fill->mat_nn;
-        tensor<double,3>& A_ng  = fill->mat_ng;
-        tensor<double,3>& A_gn  = fill->mat_gn;
+        tensor<double,3>& A_ng  = fill->mat_nc;
+        tensor<double,3>& A_gn  = fill->mat_cn;
             
         // [3.1] Friction dissipation
         rhs_n(all,range(0,2)) += fill->w_sample * jac * outer(bfs,v);
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
     RCP<TissueGen> tissueGen = rcp( new TissueGen);
     tissueGen->setBasisFunctionType(BasisFunctionType::LoopSubdivision);
     tissueGen->addNodeField("c");
-    tissueGen->addGlobField("P");
+    tissueGen->addCellField("P");
 
     RCP<Tissue> tissue = tissueGen->genRegularGridSpheres(2, 1, 1, 2.1, 2.1, 2.1, 1.0, 5);
     tissue->calculateCellCellAdjacency(0.5);
@@ -98,19 +98,17 @@ int main(int argc, char *argv[])
     tissue->saveVTK("Cell", "");
     
     for(auto cell: tissue->getLocalCells())
-        cout << cell->getGlobField("cellId") << endl;
+        cout << cell->getCellField("cellId") << endl;
 
 
     RCP<Integration> integration = rcp(new Integration);
     integration->setTissue(tissue);
     integration->setNodeDOFs({"x","y","z"});
-    integration->setGlobalDOFs({"P"});
+    integration->setCellDOFs({"P"});
     integration->setSingleIntegrand(internal);
     integration->setDoubleIntegrand(interaction);
     integration->setNumberOfIntegrationPointsSingleIntegral(1);
     integration->setNumberOfIntegrationPointsDoubleIntegral(1);
-    integration->setNumberOfCellIntegrals(0);
-    integration->setNumberOfGlobalIntegrals(1);
     integration->Update();
 
     
@@ -124,7 +122,6 @@ int main(int argc, char *argv[])
     std::chrono::duration<double> elapsed = finish - start;
     
     cout << elapsed.count() << endl;
-    cout << integration->getGlobalIntegral(0) << endl;
 
     MPI_Finalize();
 }

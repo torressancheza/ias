@@ -359,11 +359,11 @@ namespace ias
                 
                 daughter->_bfType = _bfType;
                 daughter->_nodeFieldNames = _nodeFieldNames;
-                daughter->_globFieldNames = _globFieldNames;
+                daughter->_cellFieldNames = _cellFieldNames;
 
                 daughter->Update();
                 
-                daughter->_globFields = _globFields;
+                daughter->_cellFields = _cellFields;
             }
         }
     

@@ -9,10 +9,10 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     int eNN    = fill->eNN;
     
     tensor<double,2>& nborFields = fill->nborFields;
-    tensor<double,1>& globFields = fill->globFields;
+    tensor<double,1>& cellFields = fill->cellFields;
     tensor<double,1>& tissFields = fill->tissFields;
 
-    double pressure = globFields(fill->idxGlobField("P"));
+    double pressure = cellFields(fill->idxCellField("P"));
 
     tensor<double,1>   bfs(fill->bfs[0].data(),eNN);
     tensor<double,2>  Dbfs(fill->bfs[1].data(),eNN,2);
@@ -21,11 +21,11 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     
     double deltat    = tissFields(fill->idxTissField("deltat"));
     
-    double tension   = globFields(fill->idxGlobField("tension")) * deltat;
-    double kappa     = globFields(fill->idxGlobField("kappa")) * deltat;
-    double viscosity = globFields(fill->idxGlobField("viscosity"));
-    double frictiont = globFields(fill->idxGlobField("frictiont"));
-    double frictionn = globFields(fill->idxGlobField("frictionn"));
+    double tension   = cellFields(fill->idxCellField("tension")) * deltat;
+    double kappa     = cellFields(fill->idxCellField("kappa")) * deltat;
+    double viscosity = cellFields(fill->idxCellField("viscosity"));
+    double frictiont = cellFields(fill->idxCellField("frictiont"));
+    double frictionn = cellFields(fill->idxCellField("frictionn"));
 
     tensor<double,3> voigt = {{{1.0,0.0},{0.0,0.0}},
                               {{0.0,0.0},{0.0,1.0}},
@@ -91,10 +91,10 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     
     //[3] OUTPUT
     tensor<double,2>& rhs_n = fill->vec_n;
-    tensor<double,1>& rhs_g = fill->vec_g;
+    tensor<double,1>& rhs_g = fill->vec_c;
     tensor<double,4>& A_nn  = fill->mat_nn;
-    tensor<double,3>& A_ng  = fill->mat_ng;
-    tensor<double,3>& A_gn  = fill->mat_gn;
+    tensor<double,3>& A_ng  = fill->mat_nc;
+    tensor<double,3>& A_gn  = fill->mat_cn;
     
     tensor<double,2> n0n0 = outer(normal0,normal0);
     tensor<double,2> proj0 = Identity(3);
@@ -130,21 +130,20 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     A_ng(all,all,0) += fill->w_sample            * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
     A_gn = A_ng.transpose({2,0,1});
     
-    fill->cellIntegrals[0] += fill->w_sample * jac;
-//    fill->cellIntegrals[0] += fill->w_sample / 3.0 * (jac * xn);
-    fill->cellIntegrals[1] += fill->w_sample * jac * x(0);
-    fill->cellIntegrals[2] += fill->w_sample * jac * x(1);
-    fill->cellIntegrals[3] += fill->w_sample * jac * x(2);
+    fill->cellIntegrals(fill->idxCellIntegral("A")) += fill->w_sample * jac;
+    fill->cellIntegrals(fill->idxCellIntegral("X")) += fill->w_sample * jac * x(0);
+    fill->cellIntegrals(fill->idxCellIntegral("Y")) += fill->w_sample * jac * x(1);
+    fill->cellIntegrals(fill->idxCellIntegral("Z")) += fill->w_sample * jac * x(2);
     
-    fill->cellIntegrals[4] += fill->w_sample * jac0;
-    fill->cellIntegrals[5] += fill->w_sample * jac0 * x0(0);
-    fill->cellIntegrals[6] += fill->w_sample * jac0 * x0(1);
-    fill->cellIntegrals[7] += fill->w_sample * jac0 * x0(2);
+    fill->cellIntegrals(fill->idxCellIntegral("A0")) += fill->w_sample * jac0;
+    fill->cellIntegrals(fill->idxCellIntegral("X0")) += fill->w_sample * jac0 * x0(0);
+    fill->cellIntegrals(fill->idxCellIntegral("Y0")) += fill->w_sample * jac0 * x0(1);
+    fill->cellIntegrals(fill->idxCellIntegral("Z0")) += fill->w_sample * jac0 * x0(2);
     
-    fill->globIntegrals[0] += fill->w_sample * jac0 * 0.5 * (frictiont * vt*vt + frictionn * vn*vn) / deltat/ deltat;
-    fill->globIntegrals[1] += fill->w_sample * jac0 * viscosity * product(rodt_CC,rodt,{{0,0},{1,1}}) / deltat / deltat;
-//    fill->globIntegrals[2] += fill->w_sample * (jac/jac0-1.0) * tension / deltat / deltat;
-    fill->globIntegrals[2] += fill->w_sample * jac * tension / deltat;
+//    fill->globIntegrals[0] += fill->w_sample * jac0 * 0.5 * (frictiont * vt*vt + frictionn * vn*vn) / deltat/ deltat;
+//    fill->globIntegrals[1] += fill->w_sample * jac0 * viscosity * product(rodt_CC,rodt,{{0,0},{1,1}}) / deltat / deltat;
+////    fill->globIntegrals[2] += fill->w_sample * (jac/jac0-1.0) * tension / deltat / deltat;
+//    fill->globIntegrals[2] += fill->w_sample * jac * tension / deltat;
 }
 
 void interaction(Teuchos::RCP<ias::DoubleIntegralStr> inter)
@@ -152,13 +151,13 @@ void interaction(Teuchos::RCP<ias::DoubleIntegralStr> inter)
     using namespace std;
     using namespace Tensor;
 
-    tensor<double,1> globFields = inter->fillStr1->globFields;
+    tensor<double,1> globFields = inter->fillStr1->cellFields;
     
     double deltat    = inter->fillStr1->tissFields(inter->fillStr1->idxTissField("deltat"));
 
-    double r0        = globFields(inter->fillStr1->idxGlobField("intEL"));
-    double w         = globFields(inter->fillStr1->idxGlobField("intCL"));
-    double D         = globFields(inter->fillStr1->idxGlobField("intSt")) * deltat;
+    double r0        = globFields(inter->fillStr1->idxCellField("intEL"));
+    double w         = globFields(inter->fillStr1->idxCellField("intCL"));
+    double D         = globFields(inter->fillStr1->idxCellField("intSt")) * deltat;
     
     //First calculate distance to see if we can drop the points
     int eNN_1    = inter->fillStr1->eNN;
@@ -244,6 +243,9 @@ void interaction(Teuchos::RCP<ias::DoubleIntegralStr> inter)
         
         A_nn_12 += ww * ( pot * outer(djac_1,djac_2) + jac_1 * dpot/dist * outer(aux_1,djac_2) + jac_2 * dpot/dist * outer(djac_1,aux_2) + jac_1 * jac_2 * ((ddpot-dpot/dist)/(dist*dist) * outer(aux_1,aux_2) - dpot/dist * outer(bfs_1,outer(bfs_2,Identity(3))).transpose({0,2,1,3}) ));
         A_nn_21 += ww * ( pot * outer(djac_2,djac_1) + jac_2 * dpot/dist * outer(aux_2,djac_1) + jac_1 * dpot/dist * outer(djac_2,aux_1) + jac_1 * jac_2 * ((ddpot-dpot/dist)/(dist*dist) * outer(aux_2,aux_1) - dpot/dist * outer(bfs_2,outer(bfs_1,Identity(3))).transpose({0,2,1,3}) ));
+        
+        inter->fillStr1->cellIntegrals(inter->fillStr1->idxCellIntegral("Ai")) += inter->fillStr1->w_sample * jac_1;
+        inter->fillStr2->cellIntegrals(inter->fillStr2->idxCellIntegral("Ai")) += inter->fillStr2->w_sample * jac_2;
     }
 }
 
@@ -261,19 +263,19 @@ void eulerianUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
 	
     tensor<double,2> nborFields   = fill->nborFields;
 
-    tensor<double,1>&  globFields = fill->globFields;
-    tensor<double,1> V = globFields(range(fill->idxGlobField("X"),fill->idxGlobField("Z")))/globFields(fill->idxGlobField("A")) - globFields(range(fill->idxGlobField("X0"),fill->idxGlobField("Z0")))/globFields(fill->idxGlobField("A0"));
+    tensor<double,1>&  globFields = fill->cellFields;
+    tensor<double,1> V = globFields(range(fill->idxCellField("X"),fill->idxCellField("Z")))/globFields(fill->idxCellField("A")) - globFields(range(fill->idxCellField("X0"),fill->idxCellField("Z0")))/globFields(fill->idxCellField("A0"));
 
     tensor<double,1>&  tissFields = fill->tissFields;
 
     double deltat    = tissFields(fill->idxTissField("deltat"));
-    double pressure2 = globFields(fill->idxGlobField("Paux"));
+    double pressure2 = globFields(fill->idxCellField("Paux"));
     
     int idx_x = fill->idxNodeField("x");
-    int idx_y = fill->idxNodeField("y");
     int idx_z = fill->idxNodeField("z");
+    int idx_vx = fill->idxNodeField("vx");
+    int idx_vz = fill->idxNodeField("vz");
     int idx_x0 = fill->idxNodeField("x0");
-    int idx_y0 = fill->idxNodeField("y0");
     int idx_z0 = fill->idxNodeField("z0");
     
     //[2.1] Geometry in the configuration at previous time-step
@@ -284,7 +286,7 @@ void eulerianUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     tensor<double,1> normal0 = cross0/jac0;
     double              x0n0 = x0*normal0;
 
-    tensor<double,1>      v = bfs * nborFields(all,range(3,5));
+    tensor<double,1>      v = bfs * nborFields(all,range(idx_vx,idx_vz));
     
     //[2.2] Geometry in current configuration
     tensor<double,1>      x = bfs * nborFields(all,range(idx_x,idx_z));
@@ -311,10 +313,10 @@ void eulerianUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     tensor<double,6> ddmetric   = 2.0 * product(dDx,dDx,{{3,3}}).transpose({0,1,3,4,2,5});
     
     tensor<double,2>& rhs_n = fill->vec_n;
-    tensor<double,1>& rhs_g = fill->vec_g;
+    tensor<double,1>& rhs_g = fill->vec_c;
     tensor<double,4>& A_nn  = fill->mat_nn;
-    tensor<double,3>& A_ng  = fill->mat_ng;
-    tensor<double,3>& A_gn  = fill->mat_gn;
+    tensor<double,3>& A_ng  = fill->mat_nc;
+    tensor<double,3>& A_gn  = fill->mat_cn;
 
     rhs_n += fill->w_sample * jac0 * outer(bfs,x-(x0+V+((v-V)*normal0)*normal0));
     A_nn  += fill->w_sample * jac0 * outer(outer(bfs,bfs),Identity(3)).transpose({0,2,1,3});

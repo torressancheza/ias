@@ -49,9 +49,9 @@ namespace ias
             /*! @brief Add a new field to the nodes with name newField*/
             void addNodeField(std::string newField)
             {    _nodeFieldNames.push_back(newField);    }
-            /*! @brief Add a new global field with name newField */
-            void addGlobField(std::string newField)
-            {    _globFieldNames.push_back(newField);    }
+            /*! @brief Add a new cell field with name newField */
+            void addCellField(std::string newField)
+            {    _cellFieldNames.push_back(newField);    }
             /*! @brief Set node positions as a matrix (number of points * 3)*/
             void setNodePositions(Tensor::tensor<double,2> nodePos)
             {    _nodeFields.size()==0 ? _nodeFields = nodePos : _nodeFields(Tensor::all,Tensor::range(0,2)) = nodePos;    }
@@ -78,9 +78,9 @@ namespace ias
             /*! @brief Get the number of fields at the nodes*/
             int getNumberOfNodeFields( ) const
             {    return _nodeFields.shape()[1];    }
-            /*! @brief Get the number of global fields*/
-            int getNumberOfGlobFields( ) const
-            {    return _globFields.shape()[0];    }
+            /*! @brief Get the number of cell fields*/
+            int getNumberOfCellFields( ) const
+            {    return _cellFields.shape()[0];    }
             /*! @brief Get the number of elements in the mesh*/
             int getNumberOfElements( ) const
             {    return _connec.shape()[0];    }
@@ -120,27 +120,27 @@ namespace ias
                 }
             }
 
-            /*! @brief Get the global fields (a shallow copy is created so that the user cannot change the internal structure of the tensor)*/
-            Tensor::tensor<double,1> getGlobFields()
-            {    return Tensor::tensor<double,1>(_globFields.data(),_globFields.size());    }
-            /*! @brief Get the ith global field */
-            double& getGlobField(int i)
+            /*! @brief Get the cell fields (a shallow copy is created so that the user cannot change the internal structure of the tensor)*/
+            Tensor::tensor<double,1> getCellFields()
+            {    return Tensor::tensor<double,1>(_cellFields.data(),_cellFields.size());    }
+            /*! @brief Get the ith cell field */
+            double& getCellField(int i)
             {
-                if(i<_globFields.size())
-                    return _globFields(i);
+                if(i<_cellFields.size())
+                    return _cellFields(i);
                 else
-                    throw std::runtime_error("Cell::getGlobField: Field " + std::to_string(i) + " is beyond the size of global fields (" + std::to_string(_globFields.size())+"). Did you call Update()?");
+                    throw std::runtime_error("Cell::getCellField: Field " + std::to_string(i) + " is beyond the size of cell fields (" + std::to_string(_cellFields.size())+"). Did you call Update()?");
             }
-            /*! @brief Get the global field with the given label*/
-            double& getGlobField(std::string label)
+            /*! @brief Get the cell field with the given label*/
+            double& getCellField(std::string label)
             {
                 try
                 {
-                    return getGlobField(_mapGlobFieldNames.at(label));
+                    return getCellField(_mapCellFieldNames.at(label));
                 }
                 catch (const std::out_of_range& error)
                 {
-                    throw std::runtime_error("Cell::getGlobField: Field \"" + label + "\" is not in the list of global fields. Did you call Update()?");
+                    throw std::runtime_error("Cell::getCellField: Field \"" + label + "\" is not in the list of cell fields. Did you call Update()?");
                 }
             }
             /*! @brief Get the type of basis functions*/
@@ -157,9 +157,9 @@ namespace ias
             /*! @brief Get a copy of the node field names*/
             std::vector<std::string> getNodeFieldNames() const
             {    return _nodeFieldNames;    }
-            /*! @brief Get a copy of the global field names*/
-            std::vector<std::string> getGlobFieldNames() const
-            {    return _globFieldNames;    }
+            /*! @brief Get a copy of the cell field names*/
+            std::vector<std::string> getCellFieldNames() const
+            {    return _cellFieldNames;    }
             /** @} */
 
             /** @name IO
@@ -187,15 +187,15 @@ namespace ias
             Tensor::tensor<int,2>    _connec; ///<Mesh connectivity for the cell (Input)
             BasisFunctionType _bfType = BasisFunctionType::Undefined; ///<Type of basis functions (Input)
             std::vector<std::string> _nodeFieldNames = {"x", "y", "z"}; ///<List of names for the nodal fields (x,y,z always included)
-            std::vector<std::string> _globFieldNames = {"cellId"};      ///<List of names for the global fields (cellId always included)
+            std::vector<std::string> _cellFieldNames = {"cellId"};      ///<List of names for the cell fields (cellId always included)
         
             Teuchos::RCP<BasisFunction> _bfs = Teuchos::null; ///<Pointer to basis function object
 
             Tensor::tensor<double,2> _nodeFields;  ///<Tensor storing the fields at the nodes
-            Tensor::tensor<double,1> _globFields;  ///<Tensor storing  the fields at the nodes
+            Tensor::tensor<double,1> _cellFields;  ///<Tensor storing  the fields at the nodes
         
             std::map<std::string,int> _mapNodeFieldNames; ///<Map name to field number for nodal fields
-            std::map<std::string,int> _mapGlobFieldNames; ///<Map name to field number for global fields
+            std::map<std::string,int> _mapCellFieldNames; ///<Map name to field number for cell fields
 
         friend class Tissue;
         friend class TissueGen;

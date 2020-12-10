@@ -20,7 +20,7 @@ int main()
     cell->setNodePositions(nodePos);
     cell->setConnectivity(connec);
     cell->addNodeField("c");
-    cell->addGlobField("P");
+    cell->addCellField("P");
     cell->setBasisFunctionType(BasisFunctionType::Linear);
     
     try
@@ -40,13 +40,12 @@ int main()
     
     cell = rcp(new Cell);
     cell->loadVTK("cell.vtu");
-    cell->addGlobField("viscosity");
+    cell->addCellField("viscosity");
     cell->setBasisFunctionType(BasisFunctionType::Linear);
     cell->Update();
     
     cout << cell->getNodeFields(1) << endl;
-    cell->getGlobFields()(0) = 1;
-    cout << cell->getGlobFields() << endl;
+    cell->getCellFields()(0) = 1;
     cell->getNodeField(0) *= 2;
     cout << cell->getNodeField("x") << endl;
 
@@ -56,7 +55,7 @@ int main()
         cout << g << " ";
     cout << endl;
     
-    for(auto g: cell->getGlobFieldNames())
+    for(auto g: cell->getCellFieldNames())
         cout << g << " ";
     cout << endl;
 }

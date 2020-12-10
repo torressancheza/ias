@@ -42,24 +42,24 @@ namespace ias
                 _nodeFields(all,range(prevFields.shape()[1],_nodeFieldNames.size()-1)) = 0.0;
 
         }
-        if(_globFields.shape()[0] < int(_globFieldNames.size()))
+        if(_cellFields.shape()[0] < int(_cellFieldNames.size()))
         {
-            tensor<double,1> prevFields = _globFields;
-           _globFields.resize(int(_globFieldNames.size()));
+            tensor<double,1> prevFields = _cellFields;
+           _cellFields.resize(int(_cellFieldNames.size()));
     
             if(prevFields.shape()[0] > 0)
-                _globFields(range(0,prevFields.shape()[0]-1)) = prevFields;
+                _cellFields(range(0,prevFields.shape()[0]-1)) = prevFields;
             
-            _globFields(range(prevFields.shape()[0],_globFieldNames.size()-1)) = 0.0;
+            _cellFields(range(prevFields.shape()[0],_cellFieldNames.size()-1)) = 0.0;
         }
         
         _mapNodeFieldNames.clear();
         for(size_t i = 0; i < _nodeFieldNames.size(); i++)
             _mapNodeFieldNames[_nodeFieldNames[i]] = i;
         
-        _mapGlobFieldNames.clear();
-        for(size_t i = 0; i < _globFieldNames.size(); i++)
-            _mapGlobFieldNames[_globFieldNames[i]] = i;
+        _mapCellFieldNames.clear();
+        for(size_t i = 0; i < _cellFieldNames.size(); i++)
+            _mapCellFieldNames[_cellFieldNames[i]] = i;
     }
 
     Tensor::tensor<double,2> Cell::getBoundingBox(double eps)
@@ -115,51 +115,3 @@ namespace ias
         return elems;
     }
 }
-
-//            /** @name Setters (after Update())
-//            *  @{ */
-//            /*! @brief Set the ith global field*/
-//            void setGlobField(int i, double gfield)
-//            {
-//                if(i<_globFields.size())
-//                    _globFields(i) = gfield;
-//                else
-//                    throw std::runtime_error("Cell::setGlobField: Field " + std::to_string(i) + " is beyond the size of global fields (" + std::to_string(_globFields.size())+"). Did you call Update()?");
-//            }
-//            /*! @brief Set the ith nodal field at node n*/
-//            void setNodeField(int i, int n, double value)
-//            {
-//                if(i<_nodeFields.shape()[0] )
-//                {
-//                    if (n < _nodeFields.shape()[1])
-//                        _nodeFields(i,n) = value;
-//                    else
-//                        throw std::runtime_error("Cell::setNodeField: Node " + std::to_string(n) + " does not exist!" + " Did you call Update()?");
-//
-//                }
-//                else
-//                    throw std::runtime_error("Cell::setNodeField: Field " + std::to_string(i) + " is beyond the size of node fields (" + std::to_string(_nodeFields.shape()[0])+"). Did you call Update()?");
-//            }
-//            /*! @brief Set the ith nodal field with a value*/
-//            void setNodeField(int i, double value)
-//            {
-//                if(i<_nodeFields.shape()[0])
-//                    _nodeFields(i,Tensor::all) = value;
-//                else
-//                    throw std::runtime_error("Cell::setNodeField: Field " + std::to_string(i) + " is beyond the size of node fields (" + std::to_string(_nodeFields.shape()[0])+"). Did you call Update()?");
-//            }
-//            /*! @brief Set the ith nodal field with a tensor*/
-//            void setNodeField(int i, Tensor::tensor<double,1> vals)
-//            {
-//                if(i<_nodeFields.shape()[0])
-//                {
-//                    if (vals.shape()[0] == _nodeFields.shape()[1])
-//                        _nodeFields(i,Tensor::all) = vals;
-//                    else
-//                        throw std::runtime_error("Cell::setNodeField: The given vector has a number of components " + std::to_string(vals.shape()[0]) + " that does not match the number of nodes " + std::to_string(_nodeFields.shape()[1]) + ". Did you call Update()?");
-//
-//                }
-//                else
-//                    throw std::runtime_error("Cell::setNodeField: Field " + std::to_string(i) + " is beyond the size of node fields (" + std::to_string(_nodeFields.shape()[0])+"). Did you call Update()?");
-//            }
-//            /** @} */
