@@ -769,7 +769,6 @@ namespace ias
                 _mapCellIntegralNames[f] = n;
                 n++;
             }
-            
         }
         
         _tissIntegralIdx.clear();

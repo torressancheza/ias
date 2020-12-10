@@ -133,12 +133,8 @@ namespace ias
             {
                 for(int i = 0; i < int(_cellIntegralIdx.size()); i++)
                 {
-                    int n = 0;
                     for(auto cell: _tissue->getLocalCells())
-                    {
                         cell->getCellField(_cellIntegralIdx[i]) = scalar;
-                        n++;
-                    }
                 }
             }
             /** @} */
