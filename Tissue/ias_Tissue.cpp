@@ -21,9 +21,8 @@ namespace ias
 {
     void Tissue::Update()
     {
-        
-        _checkFieldNames();
-        
+        using namespace std;
+                
         int loc_nCells = _cells.size();
         
         _nCellPart.resize(_nParts);
@@ -44,7 +43,17 @@ namespace ias
         if(_nCells < _nParts)
             throw std::runtime_error("Tissue::Update: Number of cells (" + std::to_string(_nCells) + ") is smaller than number of partitions (" + std::to_string(_nParts) + ")");
 
-
+        try
+        {
+            _checkCellIds();
+        }
+        catch (const runtime_error& error)
+        {
+            string what = error.what();
+            throw runtime_error("Tissue::Update: " + what);
+        }
+        
+        _checkFieldNames();
     }
 
     void Tissue::_checkFieldNames()
@@ -114,8 +123,10 @@ namespace ias
         std::istringstream ss_g(cellCellFieldNames0);
         std::string token;
 
+        _nodeFieldNames.clear();
         while(std::getline(ss_n, token, ','))
             _nodeFieldNames.push_back(token);
+        _cellFieldNames.clear();
         while(std::getline(ss_g, token, ','))
             _cellFieldNames.push_back(token);
         
@@ -816,5 +827,67 @@ namespace ias
             for(auto c: _inGhostCells)
                 c->Update();
         }
+    }
+
+    size_t Tissue::_checkCellIds()
+    {
+        using namespace std;
+
+        vector<int> loc_cellId;
+        vector<int> glo_cellId(_nCells);
+        
+        for(auto c: _cells)
+            loc_cellId.push_back(c->getCellField("cellId"));
+        
+        MPI_Allgatherv(loc_cellId.data(), loc_cellId.size(), MPI_INT, glo_cellId.data(), _nCellPart.data(), _offsetPart.data(), MPI_INT, _comm);
+        
+        size_t maxCellId{};
+        for(auto id: glo_cellId)
+        {
+            if(count(glo_cellId.begin(),glo_cellId.end(),id) > 1)
+                throw runtime_error("The cell id " + to_string(id) + " is repeated several times.");
+            if(int(maxCellId) < id)
+                maxCellId = id;
+        }
+        
+        return maxCellId;
+    }
+
+    void Tissue::cellDivision(std::vector<int> cellIds, double sep, double elArea)
+    {
+        using namespace std;
+        using Teuchos::RCP;
+        
+        size_t maxCellId = _checkCellIds();
+
+        int loc_nNewCells{};
+        for(auto c: _cells)
+        {
+            if(find(cellIds.begin(), cellIds.end(),c->getCellField("cellId")) != cellIds.end())
+                loc_nNewCells+=2;
+        }
+        
+        vector<int> nNewCells(_nParts);
+        MPI_Allgather(&loc_nNewCells, 1, MPI_INT, nNewCells.data(), 1, MPI_INT, _comm);
+        
+        int loc_offset{};
+        for(int i = 0; i < _myPart; i++)
+            loc_offset += nNewCells[i];
+        
+        int n{};
+        for(auto c: _cells)
+        {
+            if(find(cellIds.begin(), cellIds.end(),c->getCellField("cellId")) != cellIds.end())
+            {
+                RCP<Cell> newCell = c->cellDivision(sep, elArea);
+                c->getCellField("cellId") = maxCellId+1+loc_offset+n;
+                n++;
+                newCell->getCellField("cellId") = maxCellId+1+loc_offset+n;
+                n++;
+                _cells.push_back(newCell);
+            }
+        }
+            
+        Update();
     }
 }

@@ -184,6 +184,8 @@ namespace ias
                     throw std::runtime_error("Tissue::getTissField: Field \"" + label + "\" is not in the list of tissue fields. Did you call Update()?");
                 }
             }
+        
+            void cellDivision(std::vector<int> cellIds, double sep, double elArea);
 
             /** @} */
 
@@ -281,6 +283,7 @@ namespace ias
             /*! @brief Generate the importers/exporters to get ghost cells */
             void _genGhostImportersExporters();
             void _checkFieldNames();
+            size_t _checkCellIds();
             /** @} */
         
         friend class Integration;

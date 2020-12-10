@@ -33,6 +33,7 @@
 #include <vtkCleanPolyData.h>
 
 #include "vmtkPolyDataRemeshing.h"
+#include <vtkLoopSubdivisionFilter.h>
 
 #include "ias_LinearElements.h"
 #include "ias_LoopSubdivision.h"
@@ -48,6 +49,9 @@ namespace ias
         using namespace Tensor;
         using Teuchos::RCP;
         using Teuchos::rcp;
+        
+        if(_bfType == BasisFunctionType::LoopSubdivision)
+            el_area *= 4.0;
         
         //FIXME: make this an option
         random_device rd;  //Will be used to obtain a seed for the random number engine
@@ -294,7 +298,17 @@ namespace ias
             vtkClean->SetInputConnection(normalGenerator->GetOutputPort());
             vtkClean->Update();
             
-            auto polydata_f = vtkClean->GetOutput();
+            vtkSmartPointer<vtkPolyData> polydata_f = vtkSmartPointer<vtkPolyData>(vtkClean->GetOutput());
+            
+            
+            if(_bfType==BasisFunctionType::LoopSubdivision)
+            {
+                vtkSmartPointer<vtkPolyDataAlgorithm> subdivisionFilter = vtkSmartPointer<vtkLoopSubdivisionFilter>::New();
+                subdivisionFilter->SetInputData(polydata_f);
+                dynamic_cast<vtkLoopSubdivisionFilter *> (subdivisionFilter.GetPointer())->SetNumberOfSubdivisions(1);
+                subdivisionFilter->Update();
+                polydata_f = subdivisionFilter->GetOutput();
+            }
             
             if(n==-1)
             {

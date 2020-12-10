@@ -178,8 +178,7 @@ namespace ias
             /*! @brief Create a new mesh to reduce element distortion */
             void remesh(double tArea = 0.05);
             /*! @brief Divide the cell creating two daughters separated by a distance sep. First daughter replaces the cell, the other daughter is given as an output.  */
-            Teuchos::RCP<Cell> cellDivision(double sep, double tArea = 0.05);
-            Teuchos::RCP<Cell> cellDivisionSmallSphere(double sep, int nSubdiv, double r, double tArea = 0.05);
+            Teuchos::RCP<Cell> cellDivision(double sep, double tArea);
             /** @} */
 
         private:
