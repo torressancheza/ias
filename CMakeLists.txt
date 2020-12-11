@@ -45,14 +45,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g -ggdb -O0 -Wall -Wextra -Wpedantic")
 
 #Trilinos
-set(Trilinos_DIR $ENV{HOME}/Programs/Trilinos/lib/cmake/Trilinos/ "Trilinos cmake directory")
-find_package(Trilinos REQUIRED PATHS ${Trilinos_DIR} NO_DEFAULT_PATH)
-include_directories(SYSTEM ${TRI_BASE_PATH}/include)
+find_package(Trilinos REQUIRED)
 
 #VTK
-set(VTK_DIR /usr/local/lib/cmake/vtk-8.2/ "VTK cmake directory")
-message(${VTK_DIR})
-find_package(VTK REQUIRED PATHS ${VTK_DIR} NO_DEFAULT_PATH)
+find_package(VTK REQUIRED)
 
 #Set installation paths
 set(ias_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR})
