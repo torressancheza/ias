@@ -1,7 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <random>
-#include <omp.h>
+#include <thread>
 #include <unistd.h>
 #include <chrono>  // for high_resolution_clock
 

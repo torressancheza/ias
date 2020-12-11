@@ -1,5 +1,5 @@
 #include <fstream>
-#include <omp.h>
+#include <thread>
 
 #include "ias_Tissue.h"
 

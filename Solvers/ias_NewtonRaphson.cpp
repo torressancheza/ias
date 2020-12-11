@@ -1,10 +1,4 @@
-#include <AztecOO.h>
-#include <Amesos.h>
-#include <Amesos2.hpp>
-#include <Amesos2_Factory.hpp>
 #include <iomanip>
-
-
 #include "ias_NewtonRaphson.h"
 
 namespace ias

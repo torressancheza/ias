@@ -1,7 +1,7 @@
 #include <math.h>
 #include <iostream>
 #include <numeric>
-#include <omp.h>
+#include <thread>
 
 #include <Epetra_MpiComm.h>
 #include <Teuchos_RCP.hpp>

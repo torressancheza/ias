@@ -1,6 +1,6 @@
 #include <iostream>
 #include <numeric>
-#include <omp.h>
+#include <thread>
 
 #include <Epetra_MpiComm.h>
 

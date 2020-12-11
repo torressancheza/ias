@@ -28,20 +28,20 @@ if(APPLE)
     if(CMAKE_C_COMPILER_ID MATCHES "Clang\$")
         set(OpenMP_C_FLAGS "-Xpreprocessor -fopenmp")
         set(OpenMP_C_LIB_NAMES "omp")
-        set(OpenMP_omp_LIBRARY omp)
+        set(OpenMP_omp_LIBRARY "/usr/local/opt/libomp/lib/libomp.dylib")
     endif()
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang\$")
         set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp")
         set(OpenMP_CXX_LIB_NAMES "omp")
-        set(OpenMP_omp_LIBRARY omp)
+        set(OpenMP_omp_LIBRARY "/usr/local/opt/libomp/lib/libomp.dylib")
     endif()
 endif()
-find_package(OpenMP)
+find_package(OpenMP REQUIRED)
 
 #Compuler flags
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+#set(CMAKE_CXX_STANDARD_REQUIRED ON)
+#set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g -ggdb -O0 -Wall -Wextra -Wpedantic")
 
 #Trilinos
@@ -62,6 +62,7 @@ set(ias_LIBRARIES CACHE INTERNAL "ias_LIBRARIES")
 #Set include directories
 file(GLOB ias_INC_DIRS ${ias_SOURCE_DIR}/*)
 include_directories(${ias_INC_DIRS})
+include_directories(${Trilinos_INCLUDE_DIRS})
 
 add_subdirectory(${ias_SOURCE_DIR}/Extern)
 add_subdirectory(${ias_SOURCE_DIR}/Tensor)
