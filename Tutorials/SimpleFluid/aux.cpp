@@ -203,15 +203,6 @@ void interaction(Teuchos::RCP<ias::DoubleIntegralStr> inter)
         double w2 = inter->fillStr2->w_sample;
         double ww = w1*w2;
         
-//        if(rhs_n_1.shape()[0] != eNN_1 or rhs_n_2.shape()[0] != eNN_2)
-//            cout << "PROBLEM WITH SIZES" << rhs_n_1.shape()[0] << " " << eNN_1 << " " << rhs_n_2.shape()[0] << " " << eNN_2 << endl;
-
-//        double rm = 0.5 * r0;
-//        double a  = 1000.0*D;
-//        double   pot =   ModLinkersPotential(D,r0,w,rm,a,r0+2.0*w,r0+3.0*w,dist);
-//        double  dpot =  dModLinkersPotential(D,r0,w,rm,a,r0+2.0*w,r0+3.0*w,dist);
-//        double ddpot = ddModLinkersPotential(D,r0,w,rm,a,r0+2.0*w,r0+3.0*w,dist);
-        
         double   pot =   ModMorsePotential(D,r0,w,r0,r0+3.0*w,dist);
         double  dpot =  dModMorsePotential(D,r0,w,r0,r0+3.0*w,dist);
         double ddpot = ddModMorsePotential(D,r0,w,r0,r0+3.0*w,dist);

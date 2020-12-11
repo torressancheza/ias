@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <random>
+#include <chrono>
 
 #include <AztecOO.h>
 
@@ -143,6 +144,7 @@ int main(int argc, char **argv)
             cell->getCellField("frictiont") = frictiont;
             cell->getCellField("frictionn") = frictionn;
         }
+        tissue->saveVTK("Cell","_t"+to_string(0));
     }
     else
     {
@@ -164,7 +166,7 @@ int main(int argc, char **argv)
         }
     }
         
-    tissue->saveVTK("Cell","_t"+to_string(0));
+    tissue->saveVTK("Cell","_t"+to_string(1));
 
     RCP<Integration> physicsIntegration = rcp(new Integration);
     physicsIntegration->setTissue(tissue);
@@ -173,7 +175,7 @@ int main(int argc, char **argv)
     physicsIntegration->setSingleIntegrand(internal);
     physicsIntegration->setDoubleIntegrand(interaction);
     physicsIntegration->setNumberOfIntegrationPointsSingleIntegral(3);
-    physicsIntegration->setNumberOfIntegrationPointsDoubleIntegral(3);
+    physicsIntegration->setNumberOfIntegrationPointsDoubleIntegral(1);
     physicsIntegration->setCellIntegralFields({"A","X","Y","Z","A0","X0","Y0","Z0","Ai"});
     physicsIntegration->setCellDOFsInInteractions(false);
     physicsIntegration->Update();
