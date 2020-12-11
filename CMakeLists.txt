@@ -1,7 +1,7 @@
 #Initialise
 project(ias)
 
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.12)
 
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(MAKE_CURRENT_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR})
