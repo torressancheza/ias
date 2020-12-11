@@ -130,7 +130,7 @@ namespace ias
         //TODO: I mark this as a todo but it is mostly to stress what we are doing here. Instead of computing only the valances present in the mesh (which would be more efficient here) we calculate all valances from 4 to 12 (any mesh with less than 4 or more than 12 as valance is a distaster anyway). That way every class will have the same valances and we don't need to send this information via MPI later (which saves time). Types are then valance-4 (0 to 8).
         for(int e = 0; e < nElem; e++)
             if(_etype[e] < 0 or _etype[e] > 8)
-                throw runtime_error("Element " + to_string(e) + " has a valence " + to_string(_etype[e]) + " (<4 or > 12)" );
+                throw runtime_error("Element " + to_string(e) + " has a valence " + to_string(_etype[e]+4) + " (<4 or > 12)" );
         _types = {0,1,2,3,4,5,6,7,8};
     }
 
