@@ -32,7 +32,7 @@
 #include <vtkLinearSubdivisionFilter.h>
 #include <vtkCleanPolyData.h>
 
-#include "vmtkPolyDataRemeshing.h"
+#include "SurfaceRemeshing.h"
 #include <vtkLoopSubdivisionFilter.h>
 
 #include "ias_LinearElements.h"
@@ -105,25 +105,23 @@ namespace ias
             clipPolyData->SetInputData(polydata);
             clipPolyData->SetClipFunction(vtkplane);
             clipPolyData->Update();
+            
+            vtkSmartPointer<vtkPolyData> polydata_1 = vtkSmartPointer<vtkPolyData>(clipPolyData->GetOutput());
+            
 
-            auto polydata_1 = clipPolyData->GetOutput();
-            
-            
-            vtkSmartPointer<vtkvmtkPolyDataSurfaceRemeshing> vtkRemeshing = vtkvmtkPolyDataSurfaceRemeshing::New();
+            vtkSmartPointer<SurfaceRemeshing> vtkRemeshing = SurfaceRemeshing::New();
             vtkRemeshing->SetInputData( polydata_1 );
             vtkRemeshing->SetElementSizeModeToTargetArea();
             vtkRemeshing->SetTargetArea(el_area);
             vtkRemeshing->SetNumberOfIterations(10);
-            vtkRemeshing->SetAspectRatioThreshold(1.01);
             vtkRemeshing->SetTriangleSplitFactor(10.0);
-            vtkRemeshing->SetNumberOfConnectivityOptimizationIterations(1000);
+            vtkRemeshing->SetNumberOfConnectivityOptimizationIterations(100);
             vtkRemeshing->Update();
             
             vtkSmartPointer<vtkCleanPolyData> vtkClean = vtkCleanPolyData::New();
             vtkClean->SetInputData(  vtkRemeshing->GetOutput() );
 
             vtkClean->Update();
-            
             polydata_1 = vtkClean->GetOutput();
 
             vtkSmartPointer<vtkFeatureEdges> edges = vtkSmartPointer<vtkFeatureEdges>::New();
@@ -141,9 +139,7 @@ namespace ias
             vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
 
             for(int i = 0; i < polydata_b->GetPoints()->GetNumberOfPoints(); i++)
-            {
                 points->InsertNextPoint(polydata_b->GetPoints()->GetPoint(i));
-            }
             points->InsertNextPoint(center_plane.data());
 
             for(int i = 0; i < polydata_b->GetNumberOfCells(); i++)
@@ -160,14 +156,13 @@ namespace ias
             polydata_2->SetPoints(points);
             polydata_2->SetPolys(cells);
 
-            vtkRemeshing = vtkvmtkPolyDataSurfaceRemeshing::New();
+            vtkRemeshing = SurfaceRemeshing::New();
             vtkRemeshing->SetInputData( polydata_2 );
             vtkRemeshing->SetElementSizeModeToTargetArea();
             vtkRemeshing->SetTargetArea(el_area);
             vtkRemeshing->SetNumberOfIterations(10);
-            vtkRemeshing->SetAspectRatioThreshold(1.01);
             vtkRemeshing->SetTriangleSplitFactor(10.0);
-            vtkRemeshing->SetNumberOfConnectivityOptimizationIterations(1000);
+            vtkRemeshing->SetNumberOfConnectivityOptimizationIterations(100);
             vtkRemeshing->PreserveBoundaryEdgesOn();
             vtkRemeshing->Update();
 
@@ -299,16 +294,53 @@ namespace ias
             vtkClean->Update();
             
             vtkSmartPointer<vtkPolyData> polydata_f = vtkSmartPointer<vtkPolyData>(vtkClean->GetOutput());
-            
-            
+                    
             if(_bfType==BasisFunctionType::LoopSubdivision)
             {
-                vtkSmartPointer<vtkPolyDataAlgorithm> subdivisionFilter = vtkSmartPointer<vtkLoopSubdivisionFilter>::New();
+                vtkSmartPointer<vtkPolyDataAlgorithm> subdivisionFilter = vtkSmartPointer<vtkLinearSubdivisionFilter>::New();
                 subdivisionFilter->SetInputData(polydata_f);
-                dynamic_cast<vtkLoopSubdivisionFilter *> (subdivisionFilter.GetPointer())->SetNumberOfSubdivisions(1);
+                dynamic_cast<vtkLinearSubdivisionFilter *> (subdivisionFilter.GetPointer())->SetNumberOfSubdivisions(1);
                 subdivisionFilter->Update();
                 polydata_f = subdivisionFilter->GetOutput();
+                
+                subdivisionFilter = vtkSmartPointer<vtkLinearSubdivisionFilter>::New();
+                subdivisionFilter->SetInputData(polydata_1);
+                dynamic_cast<vtkLinearSubdivisionFilter *> (subdivisionFilter.GetPointer())->SetNumberOfSubdivisions(1);
+                subdivisionFilter->Update();
+                polydata_1 = subdivisionFilter->GetOutput();
+                
+                vtkSmartPointer<vtkCellLocator> loc = vtkSmartPointer<vtkCellLocator>::New();
+                loc->SetDataSet(polydata);
+                loc->BuildLocator();
+                
+                vtkSmartPointer<vtkPointLocator> ploc1 = vtkSmartPointer<vtkPointLocator>::New();
+                ploc1->SetDataSet(polydata_1);
+                ploc1->BuildLocator();
+
+                points = vtkSmartPointer<vtkPoints>::New();
+                for(int i = 0; i < polydata_f->GetNumberOfPoints(); i++)
+                {
+                    double *x = polydata_f->GetPoint(i);
+                    double closestpoint[3];
+                    vtkIdType cellId;
+                    int subId;
+                    double dist;
+                    loc->FindClosestPoint(x, closestpoint, cellId, subId, dist);
+                    
+                    int id1 = ploc1->FindClosestPoint(x);
+                    double *xcl1 = polydata_1->GetPoint(id1);
+                    
+                    double dist1 = sqrt((x[0]-xcl1[0]) * (x[0]-xcl1[0]) + (x[1]-xcl1[1]) * (x[1]-xcl1[1]) + (x[2]-xcl1[2]) * (x[2]-xcl1[2]));
+                    
+                    if(dist1<1.E-10)
+                        points->InsertNextPoint(closestpoint);
+                    else
+                        points->InsertNextPoint(x);
+                }
+                polydata_f->SetPoints(points);
             }
+            
+
             
             if(n==-1)
             {

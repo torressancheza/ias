@@ -3,7 +3,7 @@
 #include <vtkCleanPolyData.h>
 #include <vtkCurvatures.h>
 
-#include "vmtkPolyDataRemeshing.h"
+#include "SurfaceRemeshing.h"
 
 #include "ias_Cell.h"
 
@@ -73,7 +73,7 @@ namespace ias
 
         
         
-        vtkSmartPointer<vtkvmtkPolyDataSurfaceRemeshing> vtkRemeshing = vtkvmtkPolyDataSurfaceRemeshing::New();
+        vtkSmartPointer<SurfaceRemeshing> vtkRemeshing = SurfaceRemeshing::New();
         vtkRemeshing->SetInputData( polydata );
         vtkRemeshing->SetElementSizeModeToTargetAreaArray();
         vtkRemeshing->SetTargetAreaArrayName("TargetArea");
