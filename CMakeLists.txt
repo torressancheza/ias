@@ -9,7 +9,6 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 
 cmake_policy(SET CMP0025 NEW)
 
-set(OpenMP_BASE_PATH "$ENV{HOME}/local/openmp" CACHE PATH "OpenMP base directory")
 #Options and flags
 option(BUILD_SHARED_LIBS "Build ias with shared libraries." ON)
 option(CMAKE_BUILD_TYPE "Build Type: Debug or Release" Release)
@@ -18,49 +17,42 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/Programs/ias" CACHE PATH "Install Directory" FORCE)
 endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
-set(MPI_BASE_PATH "$ENV{HOME}/local/openmpi" CACHE PATH "MPI base directory")
-set(TRI_BASE_PATH "$ENV{HOME}/Programs/Trilinos" CACHE PATH "Trilinos base directory")
-set(VTK_BASE_PATH "$ENV{HOME}/local/vtk" CACHE PATH "Vtk base directory")
 
 #MPI
-#Library
-set(Trilinos_DIR ${TRI_BASE_PATH}/lib/cmake/Trilinos/)
-
 find_package(MPI REQUIRED)
 
-#find_library(MPI_LIBRARIES NAMES mpi HINTS ${MPI_BASE_PATH}/lib ${MPI_BASE_PATH}/lib64)
-#include_directories(SYSTEM ${MPI_BASE_PATH}/include)
-
 #OpenMP
-file(GLOB OpenMP)
-find_package(OpenMP)
-if(NOT TARGET OpenMP::OpenMP_CXX)
-    add_library(OpenMP_TARGET INTERFACE)
-    add_library(OpenMP::OpenMP_CXX ALIAS OpenMP_TARGET)
-    target_compile_options(OpenMP_TARGET INTERFACE ${OpenMP_CXX_FLAGS})
-    find_package(Threads REQUIRED)
-    target_link_libraries(OpenMP_TARGET INTERFACE Threads::Threads)
-    target_link_libraries(OpenMP_TARGET INTERFACE ${OpenMP_CXX_FLAGS})
+if(APPLE)
+    set(CMAKE_C_COMPILER clang)
+    set(CMAKE_CXX_COMPILER clang++)
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang\$")
+        set(OpenMP_C_FLAGS "-Xpreprocessor -fopenmp")
+        set(OpenMP_C_LIB_NAMES "omp")
+        set(OpenMP_omp_LIBRARY omp)
+    endif()
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang\$")
+        set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp")
+        set(OpenMP_CXX_LIB_NAMES "omp")
+        set(OpenMP_omp_LIBRARY omp)
+    endif()
 endif()
-
-
-#find_library(OpenMP_LIBRARIES NAMES openmp omp HINTS ${OpenMP_BASE_PATH}/lib ${OpenMP_BASE_PATH}/lib64)
-#include_directories(SYSTEM ${OpenMP_BASE_PATH}/include)
+find_package(OpenMP)
 
 #Compuler flags
-set(CMAKE_CXX_COMPILER mpicxx)
-set(CMAKE_CXX_FLAGS "-std=c++11")
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g -ggdb -O0 -Wall -Wextra -Wpedantic")
 
 #Trilinos
-set(Trilinos_DIR ${TRI_BASE_PATH}/lib/cmake/Trilinos/)
-set(CMAKE_PREFIX_PATH ${Trilinos_DIR} ${CMAKE_PREFIX_PATH})
-find_package(Trilinos REQUIRED)
+set(Trilinos_DIR $ENV{HOME}/Programs/Trilinos/lib/cmake/Trilinos/ "Trilinos cmake directory")
+find_package(Trilinos REQUIRED PATHS ${Trilinos_DIR} NO_DEFAULT_PATH)
 include_directories(SYSTEM ${TRI_BASE_PATH}/include)
 
 #VTK
-file(GLOB VTK_DIR ${VTK_BASE_PATH}/lib/cmake/vtk-*/)
-find_package(VTK REQUIRED)
+set(VTK_DIR /usr/local/lib/cmake/vtk-8.2/ "VTK cmake directory")
+message(${VTK_DIR})
+find_package(VTK REQUIRED PATHS ${VTK_DIR} NO_DEFAULT_PATH)
 
 #Set installation paths
 set(ias_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR})

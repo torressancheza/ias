@@ -4,7 +4,6 @@ file(GLOB SOURCES_CPP *.cpp)
 set(SOURCE_FILES ${SOURCES_H} ${SOURCES_CPP})
 set(LIBNAME iasSolvers)
 
-
 add_library(${LIBNAME} ${SOURCE_FILES})
 
 target_link_libraries(${LIBNAME} MPI::MPI_CXX)

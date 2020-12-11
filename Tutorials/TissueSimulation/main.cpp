@@ -284,13 +284,6 @@ int main(int argc, char **argv)
         {
             int nIter = physicsNewtonRaphson->getNumberOfIterations();
             
-            for(auto cell: tissue->getLocalCells())
-            {
-                cout << cell->getCellField("A") << " " << cell->getCellField("X") << " " << cell->getCellField("Y") << " " << cell->getCellField("Z") << endl;
-                cout << cell->getCellField("A0") << " " << cell->getCellField("X0") << " " << cell->getCellField("Y0") << " " << cell->getCellField("Z0") << endl;
-                cout << cell->getCellField("Ai") << endl;
-            }
-            //---------------------------------------------------------------------------
             if(tissue->getMyPart()==0)
                 cout << "Solving for displacement along the normal" << endl;
 
