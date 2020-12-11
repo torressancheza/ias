@@ -10,5 +10,6 @@ target_link_libraries(${exName} ${MPI_LIB})
 target_link_libraries(${exName} ${Trilinos_LIBRARIES})
 target_link_libraries(${exName} ${VTK_LIBRARIES})
 target_link_libraries(${exName} ${ias_LIBRARIES})
+target_link_libraries(${exName} ${OpenMP_LIBRARIES})
 
 install(TARGETS ${exName} DESTINATION ${ias_BIN_INSTALL})

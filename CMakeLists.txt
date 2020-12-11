@@ -18,6 +18,7 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
 set(MPI_BASE_PATH "$ENV{HOME}/local/openmpi" CACHE PATH "MPI base directory")
+set(OpenMP_BASE_PATH "$ENV{HOME}/local/openmp" CACHE PATH "OpenMP base directory")
 set(TRI_BASE_PATH "$ENV{HOME}/local/trilinos" CACHE PATH "Trilinos base directory")
 set(VTK_BASE_PATH "$ENV{HOME}/local/vtk" CACHE PATH "Vtk base directory")
 
@@ -25,6 +26,10 @@ set(VTK_BASE_PATH "$ENV{HOME}/local/vtk" CACHE PATH "Vtk base directory")
 #Library
 find_library(MPI_LIBRARIES NAMES mpi HINTS ${MPI_BASE_PATH}/lib ${MPI_BASE_PATH}/lib64)
 include_directories(SYSTEM ${MPI_BASE_PATH}/include)
+
+#OpenMP
+find_library(OpenMP_LIBRARIES NAMES openmp omp HINTS ${OpenMP_BASE_PATH}/lib ${OpenMP_BASE_PATH}/lib64)
+include_directories(SYSTEM ${OpenMP_BASE_PATH}/include)
 
 #Compuler flags
 set(CMAKE_CXX_COMPILER mpicxx)
