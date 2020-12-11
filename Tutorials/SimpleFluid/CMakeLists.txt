@@ -6,10 +6,10 @@ file(GLOB SOURCES ${SOURCES_CPP} ${SOURCES_H})
 
 set(exName "ias${folder}")
 add_executable(${exName} ${SOURCES})
-target_link_libraries(${exName} ${MPI_LIB})
+target_link_libraries(${exName} MPI::MPI_CXX)
 target_link_libraries(${exName} ${Trilinos_LIBRARIES})
 target_link_libraries(${exName} ${VTK_LIBRARIES})
 target_link_libraries(${exName} ${ias_LIBRARIES})
-target_link_libraries(${exName} ${OpenMP_LIBRARIES})
+target_link_libraries(${exName} OpenMP::OpenMP_CXX)
 
 install(TARGETS ${exName} DESTINATION ${ias_BIN_INSTALL})

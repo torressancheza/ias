@@ -10,7 +10,7 @@ foreach(testsourcefile ${TESTS_CPP})
     target_link_libraries(${testname} ${Trilinos_LIBRARIES})
     target_link_libraries(${testname} ${VTK_LIBRARIES})
     target_link_libraries(${testname} ${ias_LIBRARIES})
-    target_link_libraries(${testname} ${OpenMP_LIBRARIES})
+    target_link_libraries(${testname} OpenMP::OpenMP_CXX)
 
     #    install(TARGETS ${testName} DESTINATION ${ias_BIN_INSTALL})
     set_target_properties(${testname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${ias_BIN_INSTALL})

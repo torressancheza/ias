@@ -7,7 +7,7 @@ set(LIBNAME iasSolvers)
 
 add_library(${LIBNAME} ${SOURCE_FILES})
 
-target_link_libraries(${LIBNAME} ${MPI_LIBRARIES})
+target_link_libraries(${LIBNAME} MPI::MPI_CXX)
 target_link_libraries(${LIBNAME} ${VTK_LIBRARIES})
 target_link_libraries(${LIBNAME} ${Trilinos_LIBRARIES})
 target_link_libraries(${LIBNAME} ${ias_LIBRARIES})
