@@ -1,5 +1,14 @@
-#ifndef aux_mzg_h
-#define aux_mzg_h
+//    **************************************************************************************************
+//    ias - Interacting Active Surfaces
+//    Project homepage: https://github.com/torressancheza/ias
+//    Copyright (c) 2020 Alejandro Torres-Sanchez, Max Kerr Winter and Guillaume Salbreux
+//    **************************************************************************************************
+//    ias is licenced under the MIT licence:
+//    https://github.com/torressancheza/ias/blob/master/licence.txt
+//    **************************************************************************************************
+
+#ifndef aux_TissSim_h
+#define aux_TissSim_h
 
 #include <random>
 

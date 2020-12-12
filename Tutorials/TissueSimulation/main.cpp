@@ -1,3 +1,12 @@
+//    **************************************************************************************************
+//    ias - Interacting Active Surfaces
+//    Project homepage: https://github.com/torressancheza/ias
+//    Copyright (c) 2020 Alejandro Torres-Sanchez, Max Kerr Winter and Guillaume Salbreux
+//    **************************************************************************************************
+//    ias is licenced under the MIT licence:
+//    https://github.com/torressancheza/ias/blob/master/licence.txt
+//    **************************************************************************************************
+
 #include <iostream>
 #include <fstream>
 #include <random>
@@ -195,7 +204,7 @@ int main(int argc, char **argv)
     physicsLinearSolver->addAztecOOParameter("precond","dom_decomp");
     physicsLinearSolver->addAztecOOParameter("subdomain_solve","ilu");
     physicsLinearSolver->addAztecOOParameter("output","none");
-    physicsLinearSolver->setMaximumNumberOfIterations(500);
+    physicsLinearSolver->setMaximumNumberOfIterations(5000);
     physicsLinearSolver->setResidueTolerance(1.E-8);
     physicsLinearSolver->Update();
     

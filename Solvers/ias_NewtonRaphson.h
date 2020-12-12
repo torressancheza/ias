@@ -1,34 +1,14 @@
+//    **************************************************************************************************
+//    ias - Interacting Active Surfaces
+//    Project homepage: https://github.com/torressancheza/ias
+//    Copyright (c) 2020 Alejandro Torres-Sanchez, Max Kerr Winter and Guillaume Salbreux
+//    **************************************************************************************************
+//    ias is licenced under the MIT licence:
+//    https://github.com/torressancheza/ias/blob/master/licence.txt
+//    **************************************************************************************************
+
 #ifndef _NewtonRaphson_h
 #define _NewtonRaphson_h
-//
-//
-//#include <Epetra_LinearProblem.h>
-//#include <EpetraExt_readEpetraLinearSystem.h>
-//#include <Epetra_CrsMatrix.h>
-//#include <Epetra_Map.h>
-//
-//#include <Ifpack_Preconditioner.h>
-//#include <Ifpack.h>
-//
-//#include <BelosConfigDefs.hpp>
-//#include <BelosLinearProblem.hpp>
-//#include <BelosEpetraAdapter.hpp>
-//#include <BelosBlockGmresSolMgr.hpp>
-//
-//#include <BelosLinearProblem.hpp>
-//#include <BelosSolverManager.hpp>
-//
-//#include <BelosBlockGmresSolMgr.hpp>
-//#include <BelosPseudoBlockGmresSolMgr.hpp>
-//#include <BelosBlockCGSolMgr.hpp>
-//#include <BelosPseudoBlockCGSolMgr.hpp>
-//#include <BelosPseudoBlockTFQMRSolMgr.hpp>
-//#include <BelosGCRODRSolMgr.hpp>
-//#include <BelosRCGSolMgr.hpp>
-//
-//
-//#include <Ifpack_Preconditioner.h>
-//#include <Ifpack.h>
 
 #include "ias_Integration.h"
 #include "ias_Solver.h"
