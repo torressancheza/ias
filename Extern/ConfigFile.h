@@ -1,45 +1,26 @@
-/**
-\brief Class for reading named values from configuration files
-Richard J. Wagner  v2.1  24 May 2004  wagnerr@umich.edu
+//Class for reading named values from configuration files
+//Richard J. Wagner  v2.1  24 May 2004  wagnerr@umich.edu
+//
+//Copyright (c) 2004 Richard J. Wagner
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy
+//of this software and associated documentation files (the "Software"), to
+//deal in the Software without restriction, including without limitation the
+//rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+//sell copies of the Software, and to permit persons to whom the Software is
+//furnished to do so, subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in
+//all copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//LIBILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+//IN THE SOFTWARE.
 
-Copyright (c) 2004 Richard J. Wagner
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to
-deal in the Software without restriction, including without limitation the
-rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-sell copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIBILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
-
-Typical usage
--------------
-
-Given a configuration file "settings.inp":
-  atoms  = 25
-  length = 8.0  # nanometers
-  name = Reece Surcher
-
-Named values are read in various ways, with or without default values:
-  ConfigFile config( "settings.inp" );
-  int atoms = config.read<int>( "atoms" );
-  double length = config.read( "length", 10.0 );
-  string author, title;
-  config.readInto( author, "name" );
-  config.readInto( title, "title", string("Untitled") );
-
-See file example.cpp for more examples.
-*/
 #ifndef __CONFIGFILE_H
 #define __CONFIGFILE_H
 

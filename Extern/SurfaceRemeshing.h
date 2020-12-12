@@ -1,5 +1,33 @@
-#ifndef __vtkvmtkPolyDataSurfaceRemeshing_h
-#define __vtkvmtkPolyDataSurfaceRemeshing_h
+//    **************************************************************************************************
+//    ias - Interacting Active Surfaces
+//    Project homepage: https://github.com/torressancheza/ias
+//    Copyright (c) 2020 Alejandro Torres-Sanchez, Max Kerr Winter and Guillaume Salbreux
+//    **************************************************************************************************
+//    ias is licenced under the MIT licence:
+//    https://github.com/torressancheza/ias/blob/master/licence.txt
+//    **************************************************************************************************
+//
+//    This file has been modified for usage in this project. See copyright of the original file below
+
+/*=========================================================================
+  Program:   VMTK
+  Module:    $RCSfile: vtkvmtkPolyDataSurfaceRemeshing.cxx,v $
+  Language:  C++
+  Date:      $Date: 2006/04/06 16:46:44 $
+  Version:   $Revision: 1.5 $
+  Copyright (c) Luca Antiga, David Steinman. All rights reserved.
+  See LICENSE file for details.
+  Portions of this code are covered under the VTK copyright.
+  See VTKCopyright.txt or http://www.kitware.com/VTKCopyright.htm
+  for details.
+     This software is distributed WITHOUT ANY WARRANTY; without even
+     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+     PURPOSE.  See the above copyright notices for more information.
+=========================================================================*/
+
+
+#ifndef _SurfaceRemeshing_h
+#define _SurfaceRemeshing_h
 
 #include "vtkObject.h"
 #include "vtkPolyDataAlgorithm.h"
@@ -111,7 +139,7 @@ class SurfaceRemeshing : public vtkPolyDataAlgorithm
 
         virtual int RequestData(vtkInformation *, vtkInformationVector **, vtkInformationVector *) override;
 
-        void BuildEntityBoundary(vtkSmartPointer<vtkPolyData>& input, vtkSmartPointer<vtkPolyData>& entityBoundary);
+        void BuildEntityBoundary(vtkPolyData* input, vtkPolyData* entityBoundary);
     
         int EdgeFlipConnectivityOptimizationIteration();
         int EdgeFlipIteration();
@@ -148,14 +176,14 @@ class SurfaceRemeshing : public vtkPolyDataAlgorithm
 
         int FindOneRingNeighbors(vtkIdType pointId, vtkSmartPointer<vtkIdList> neighborIds);
 
-        vtkSmartPointer<vtkPolyData> Mesh;
-        vtkSmartPointer<vtkPolyData> InputBoundary;
-        vtkSmartPointer<vtkPolyData> InputEntityBoundary;
-        vtkSmartPointer<vtkCellLocator> Locator;
-        vtkSmartPointer<vtkCellLocator> EntityBoundaryLocator;
-        vtkSmartPointer<vtkIntArray> CellEntityIdsArray;
-        vtkSmartPointer<vtkDataArray> TargetAreaArray;
-        vtkSmartPointer<vtkIdList> ExcludedEntityIds;
+        vtkPolyData* Mesh;
+        vtkPolyData* InputBoundary;
+        vtkPolyData* InputEntityBoundary;
+        vtkCellLocator* Locator;
+        vtkCellLocator* EntityBoundaryLocator;
+        vtkIntArray* CellEntityIdsArray;
+        vtkDataArray* TargetAreaArray;
+        vtkIdList* ExcludedEntityIds;
 
         double AspectRatioThreshold;
         double InternalAngleTolerance;
@@ -182,5 +210,5 @@ class SurfaceRemeshing : public vtkPolyDataAlgorithm
         void operator=(const SurfaceRemeshing&);  // Not implemented.
 };
 
-#endif
+#endif //_SurfaceRemeshing_h
 

@@ -1,3 +1,30 @@
+//    **************************************************************************************************
+//    ias - Interacting Active Surfaces
+//    Project homepage: https://github.com/torressancheza/ias
+//    Copyright (c) 2020 Alejandro Torres-Sanchez, Max Kerr Winter and Guillaume Salbreux
+//    **************************************************************************************************
+//    ias is licenced under the MIT licence:
+//    https://github.com/torressancheza/ias/blob/master/licence.txt
+//    **************************************************************************************************
+//
+//    This file has been modified for usage in this project. See copyright of the original file below
+
+/*=========================================================================
+  Program:   VMTK
+  Module:    $RCSfile: vtkvmtkPolyDataSurfaceRemeshing.cxx,v $
+  Language:  C++
+  Date:      $Date: 2006/04/06 16:46:44 $
+  Version:   $Revision: 1.5 $
+  Copyright (c) Luca Antiga, David Steinman. All rights reserved.
+  See LICENSE file for details.
+  Portions of this code are covered under the VTK copyright.
+  See VTKCopyright.txt or http://www.kitware.com/VTKCopyright.htm
+  for details.
+     This software is distributed WITHOUT ANY WARRANTY; without even
+     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+     PURPOSE.  See the above copyright notices for more information.
+=========================================================================*/
+
 #include "vtkCellArray.h"
 #include "vtkPolyData.h"
 #include "vtkPointData.h"
@@ -285,69 +312,17 @@ int SurfaceRemeshing::RequestData(vtkInformation *vtkNotUsed(request), vtkInform
     return 1;
 }
 
-void SurfaceRemeshing::BuildEntityBoundary(vtkSmartPointer<vtkPolyData>& input, vtkSmartPointer<vtkPolyData>& entityBoundary)
+void SurfaceRemeshing::BuildEntityBoundary(vtkPolyData* input, vtkPolyData* entityBoundary)
 {
-//    vtkPoints* entityBoundaryPoints = vtkPoints::New();
-//    vtkCellArray* entityBoundaryCells = vtkCellArray::New();
-//    vtkIdList* cellIds = vtkIdList::New();
-//    vtkIdType numberOfCells = input->GetNumberOfCells();
-//    vtkIdType npts;
-//
-//    #if (VTK_MAJOR_VERSION < 9)
-//      vtkIdType *pts;
-//    #else
-//      const vtkIdType *pts;
-//    #endif
-//
-//    for (int i=0; i<numberOfCells; i++)
-//    {
-//        if (input->GetCellType(i) != VTK_TRIANGLE)
-//            continue;
-//
-//        input->GetCellPoints(i,npts,pts);
-//        vtkIdType cellEntityId = this->CellEntityIdsArray->GetValue(i);
-//        for (int j=0; j<npts; j++)
-//        {
-//            cellIds->Initialize();
-//            vtkIdType pt1 = pts[j];
-//            vtkIdType pt2 = pts[(j+1)%npts];
-//            input->GetCellEdgeNeighbors(i,pt1,pt2,cellIds);
-//            bool entityBoundaryEdge = false;
-//            for (int k=0; k<cellIds->GetNumberOfIds(); k++)
-//            {
-//                if (this->CellEntityIdsArray->GetValue(cellIds->GetId(k)) != cellEntityId)
-//                {
-//                    entityBoundaryEdge = true;
-//                    break;
-//                }
-//            }
-//            if (entityBoundaryEdge)
-//            {
-//                vtkIdType pt1Id = entityBoundaryPoints->InsertNextPoint(input->GetPoint(pt1));
-//                vtkIdType pt2Id = entityBoundaryPoints->InsertNextPoint(input->GetPoint(pt2));
-//                entityBoundaryCells->InsertNextCell(2);
-//                entityBoundaryCells->InsertCellPoint(pt1Id);
-//                entityBoundaryCells->InsertCellPoint(pt2Id);
-//            }
-//        }
-//    }
-//
-//    entityBoundary->SetPoints(entityBoundaryPoints);
-//    entityBoundary->SetLines(entityBoundaryCells);
-//
-//    cellIds->Delete();
-//    entityBoundaryPoints->Delete();
-//    entityBoundaryCells->Delete();
+    vtkSmartPointer<vtkFeatureEdges> edges = vtkSmartPointer<vtkFeatureEdges>::New();
+    edges->SetInputData(input);
+    edges->BoundaryEdgesOn();
+    edges->FeatureEdgesOff();
+    edges->NonManifoldEdgesOff();
+    edges->ManifoldEdgesOff();
+    edges->Update();
     
-    vtkSmartPointer<vtkFeatureEdges> edges2 = vtkSmartPointer<vtkFeatureEdges>::New();
-    edges2->SetInputData(input);
-    edges2->BoundaryEdgesOn();
-    edges2->FeatureEdgesOff();
-    edges2->NonManifoldEdgesOff();
-    edges2->ManifoldEdgesOff();
-    edges2->Update();
-    
-    entityBoundary = edges2->GetOutput();
+    entityBoundary->DeepCopy(edges->GetOutput());
 }
 
 int SurfaceRemeshing::GetNumberOfBoundaryEdges(vtkIdType cellId)
