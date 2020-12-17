@@ -49,7 +49,7 @@ namespace ias
             file <<"<FieldData>" << endl;
             for(int i = 0; i < _tissFields.size(); i++)
             {
-                file <<"<DataArray type=\"Float64\" Name=\"" << _tissFieldNames[i] <<"\" NumberOfTuples=\"1\" format=\"ascii\" RangeMin=\"" << time << "\" RangeMax=\"" << time << "\">" << endl;
+                file <<"<DataArray type=\"Float64\" Name=\"" << _tissFieldNames[i] <<"\" NumberOfTuples=\"1\" format=\"ascii\" RangeMin=\"" << _tissFields(i) << "\" RangeMax=\"" << _tissFields(i) << "\">" << endl;
                 file << _tissFields(i) << endl;
                 file << "</DataArray>" << endl;
             }
