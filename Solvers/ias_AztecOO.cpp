@@ -8,8 +8,6 @@
 //    **************************************************************************************************
 
 #include <Teuchos_ParameterList.hpp>
-#include <AztecOOParameterList.hpp>
-
 
 #include "ias_AztecOO.h"
 
