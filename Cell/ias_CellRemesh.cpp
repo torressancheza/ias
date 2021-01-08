@@ -11,6 +11,8 @@
 #include <vtkPointData.h>
 #include <vtkCleanPolyData.h>
 #include <vtkCurvatures.h>
+#include <vtkLoopSubdivisionFilter.h>
+#include <vtkCellLocator.h>
 
 #include "SurfaceRemeshing.h"
 
@@ -28,6 +30,9 @@ namespace ias
         if (_connec.shape()[1] != 3)
             throw runtime_error("Cell::remesh: Only programmed for triangular meshes at the time");
                
+        if(_bfType == BasisFunctionType::LoopSubdivision)
+            tArea *= 4.0;
+        
         vtkSmartPointer<vtkPolyData> polydata = getPolyData();
         
         vtkSmartPointer<vtkCurvatures> meanCurva = vtkSmartPointer<vtkCurvatures>::New();
@@ -53,7 +58,7 @@ namespace ias
         double dz = bounds[5]-bounds[4];
         double r = 1./3.0*(dx+dy+dz);
         
-        for(int i =0; i < getNumberOfPoints(); i++)
+        for(int i =0; i < getNumberOfPoints(); i++) //FIXME: this should be an option
         {
 
             double H = meanCurva->GetOutput()->GetPointData()->GetScalars()->GetTuple(i)[0];
@@ -102,17 +107,44 @@ namespace ias
 //        vtkClean->SetTolerance(1.E-8);
         vtkClean->Update();
 
+        vtkSmartPointer<vtkPolyData>  polydata_f = vtkClean->GetOutput();
         
-        polydata = vtkClean->GetOutput();
-        auto points = polydata->GetPoints();
-        auto cells  = polydata->GetPolys();
+        if(_bfType==BasisFunctionType::LoopSubdivision)
+        {
+            vtkSmartPointer<vtkPolyDataAlgorithm> subdivisionFilter = vtkSmartPointer<vtkLoopSubdivisionFilter>::New();
+            subdivisionFilter->SetInputData(polydata_f);
+            dynamic_cast<vtkLoopSubdivisionFilter *> (subdivisionFilter.GetPointer())->SetNumberOfSubdivisions(1);
+            subdivisionFilter->Update();
+            polydata_f = subdivisionFilter->GetOutput();
+            
+            vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+            for(int i = 0; i < polydata_f->GetNumberOfPoints(); i++)
+            {
+                double *x = polydata_f->GetPoint(i);
+                double closestpoint[3];
+                vtkIdType cellId;
+                int subId;
+                double dist;
+                
+                vtkSmartPointer<vtkCellLocator> loc = vtkSmartPointer<vtkCellLocator>::New();
+                loc->SetDataSet(polydata);
+                loc->BuildLocator();
+                
+                loc->FindClosestPoint(x, closestpoint, cellId, subId, dist);
+                
+                points->InsertNextPoint(closestpoint);
+            }
+            
+            polydata_f->SetPoints(points);
+        }
+        
+        auto points = polydata_f->GetPoints();
+        auto cells  = polydata_f->GetPolys();
         
         //Dimentionalise eveything
         int nVert = 3;
         int nElem = cells->GetNumberOfCells();
         int nPts = points->GetNumberOfPoints();
-
-        cout << nElem << endl;
         
         _connec.resize(nElem,nVert);
         
@@ -142,6 +174,7 @@ namespace ias
             x(2) = points->GetPoint(i)[2];
         }
         
+        Update();
         //FIXME: do a least squares here for the rest of fields!
     }
 }
