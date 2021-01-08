@@ -52,29 +52,30 @@ namespace ias
             int e = adjyNE[i][0];
             nbors_e.erase(e);
             
-            int j0 = connec(e,0) == i ? connec(e,2) : (connec(e,1) == i ? connec(e,0) : connec(e,1));
-            int j  = connec(e,0) == j0 ? connec(e,2) : (connec(e,1) == j0 ? connec(e,0) : connec(e,1));
+            //Last neighbour to be added
+            int jlast = connec(e,0) == i ? connec(e,2) : (connec(e,1) == i ? connec(e,0) : connec(e,1));
+            //First neighbour to be added
+            int j  = connec(e,0) == jlast ? connec(e,2) : (connec(e,1) == jlast ? connec(e,0) : connec(e,1));
             
             while (not finished)
             {
                 nbors_n.push_back(j);
-                int jn = j;
+                int jprev = j;
                 for(auto g: nbors_e)
                 {
-                    j = connec(g,0) == j ? connec(g,2) : (connec(g,1) == j ? connec(g,0) : (connec(g,2) == j ? connec(g,1) : j));
+                    j = connec(g,0) == jprev ? connec(g,2) : (connec(g,1) == jprev ? connec(g,0) : (connec(g,2) == jprev ? connec(g,1) : jprev));
                     
-                    if(j != jn)
+                    if(j != jprev)
                     {
                         nbors_e.erase(g);
                         break;
                     }
                 }
                 
-                if(j == j0)
+                if(j == jlast)
                     finished = true;
             }
-            nbors_n.push_back(j0);
-
+            nbors_n.push_back(jlast);
             adjyNN.emplace_back(nbors_n);
         }
         
@@ -87,22 +88,24 @@ namespace ias
         {
             array<int,3> conn = {connec(e,0), connec(e,1), connec(e,2)};
 
+            int countirr = int(adjyNN[conn[0]].size() != 6) + int(adjyNN[conn[1]].size() != 6) + int(adjyNN[conn[2]].size() != 6);
             //Check if all nodes are irregular and throw an error if they are
-            if(adjyNN[conn[0]].size() != 6 and adjyNN[conn[1]].size() != 6 and adjyNN[conn[2]].size() != 6)
+            if(countirr > 1)
                 throw runtime_error("All nodes are irregular in element " + to_string(e) + " (" + to_string(adjyNN[conn[0]].size()) + ", " + to_string(adjyNN[conn[1]].size()) + ", " + to_string(adjyNN[conn[2]].size()) + "). You need to subdivide the mesh at least once!");
-            
-            //First check for the irregular node
-            for( int i = 0; i < 3; i++)
+            else if(countirr > 0)
             {
-                if(adjyNN[conn[0]].size() != 6)
-                    break;
-             
-                int aux = conn[0];
-                conn[0] = conn[1];
-                conn[1] = conn[2];
-                conn[2] = aux;
+                for( int i = 0; i < 3; i++)
+                {
+                    if(adjyNN[conn[0]].size() != 6)
+                        break;
+                 
+                    int aux = conn[0];
+                    conn[0] = conn[1];
+                    conn[1] = conn[2];
+                    conn[2] = aux;
+                }
             }
-
+            
             _adjyEN_j.push_back(conn[0]);
             //First find where node 1 is in the list of neighbours of node 0
             auto it1 = find(adjyNN[conn[0]].begin(),adjyNN[conn[0]].end(),conn[1]);
@@ -117,7 +120,7 @@ namespace ias
             //Now find where node 2 is in the list of neighbours of node 1 (we start in the next position)
             auto it2 = find(adjyNN[conn[1]].begin(),adjyNN[conn[1]].end(),conn[2]);
             int j2 = it2-adjyNN[conn[1]].begin();
-            int nNN2 = adjyNN[conn[1]].size(); //FIXME: This must be six anyway
+            int nNN2 = 6;
             for(int i = 0; i < nNN2-3; i++)
             {
                 int node = adjyNN[conn[1]][(i+j2+1) % nNN2];
@@ -127,13 +130,23 @@ namespace ias
             //Now find where node 0 is in the list of neighbours of node 2 (we start two positions way)
             auto it3 = find(adjyNN[conn[2]].begin(),adjyNN[conn[2]].end(),conn[0]);
             int j3 = it3-adjyNN[conn[2]].begin();
-            int nNN3 = adjyNN[conn[2]].size(); //This must be six anyway
+            int nNN3 = 6;
             _adjyEN_j.push_back(adjyNN[conn[2]][(j3+2+1) % nNN3]);
             _adjyEN_j.push_back(adjyNN[conn[2]][(j3+2+0) % nNN3]);
 
             _etype[e] = adjyNN[conn[0]].size()-4;
             _adjyEN_i[e+1] = _adjyEN_i[e] + adjyNN[conn[0]].size() + 6;
         }
+        
+//        for(int i = 0; i < _adjyEN_i.size()-1; i++)
+//        {
+//            cout << i << ": ";
+//            for(int j = _adjyEN_i[i]; j < _adjyEN_i[i+1]; j++)
+//            {
+//                cout << _adjyEN_j[j] << " ";
+//            }
+//            cout << endl;
+//        }
         
         
         //TODO: I mark this as a todo but it is mostly to stress what we are doing here. Instead of computing only the valances present in the mesh (which would be more efficient here) we calculate all valances from 4 to 12 (any mesh with less than 4 or more than 12 as valance is a distaster anyway). That way every class will have the same valances and we don't need to send this information via MPI later (which saves time). Types are then valance-4 (0 to 8).
@@ -184,6 +197,8 @@ namespace ias
                 picking( 7, eval+ 9) = 1.0;        picking(10, eval+10) = 1.0;
                 break;
             }
+            default:
+                throw std::runtime_error("pickmtrx: only types 0 1 and 2!");
         }
        
         return picking;
@@ -315,12 +330,10 @@ namespace ias
         double u = 1.0-xi[0]-xi[1];
 
         if ( abs(u-1.0) < _eps )
-        {
             return basisFunctionsDerNode0(eval);
-        }
 
         // evaluate the number of the required subdivisions
-        int na  = 0;
+        int na = 0;
         double min = 0.0;
         double max = 0.5;
 
@@ -330,9 +343,9 @@ namespace ias
             min  = max;
             max += pow(2.0,-na-1);
         }
-        
+                
         //barycentric coordinates after subdivision
-        int potenz = na+1;
+//        int potenz = na+1;
         double pow2   = pow(2.0, na);
         v  *= pow2;
         w  *= pow2;
@@ -372,11 +385,12 @@ namespace ias
         
         tensor<double,2> picking = pickmtrx(eval, type);
         tensor<double,2> subdiv  = subdivisionmatrix(eval);
+        tensor<double,2> subdiv_n = subdiv;
         
-        for(int i = 0; i < potenz-1; i++)
-            subdiv = subdiv * subdiv;
-        picking = picking * subdiv;
-        
+        for(int i = 0; i < na; i++)
+            subdiv_n = subdiv_n * subdiv;
+        picking = picking * subdiv_n;
+                
         auto boxplines = _computeBoxSplines ({v,w});
         
         vector<std::vector<double>> ders;
@@ -389,12 +403,12 @@ namespace ias
         for (int j=0; j<(eval+6); j++)
         {
 
-            double sum_shape  = 0.0;
-            double sum_derx   = 0.0;
-            double sum_dery   = 0.0;
-            double sum_hessxx = 0.0;
-            double sum_hessyy = 0.0;
-            double sum_hessxy = 0.0;
+            double sum_shape{};
+            double sum_derx{};
+            double sum_dery{};
+            double sum_hessxx{};
+            double sum_hessyy{};
+            double sum_hessxy{};
 
             for (int i=0; i<12; i++)
             {
@@ -414,6 +428,7 @@ namespace ias
             ders[2][j*3+2] =  sum_hessxy * jfac * jfac;
         }
         
+        
         return ders;
     }
 
@@ -427,7 +442,6 @@ namespace ias
         ders[0].resize(12);
         ders[1].resize(2*12);
         ders[2].resize(3*12);
-        
         
         //Barycentric coordinates
         double v = xi[0];
