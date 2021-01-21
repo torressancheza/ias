@@ -64,6 +64,7 @@ int main(int argc, char **argv)
     double nr_soltol{1.E-8};
         
     string  fEnerName{"energies.txt"};
+    string  updateMethod{"Eulerian"};
     ofstream fEner;
     
     if(argc == 2)
@@ -108,6 +109,11 @@ int main(int argc, char **argv)
         config.readInto(restart, "restart");
         config.readInto(resLocation, "resLocation");
         config.readInto(resFileName, "resFileName");
+        
+        config.readInto(updateMethod, "updateMethod");
+        
+        if(updateMethod.compare("eulerian")!=0 and updateMethod.compare("ALE") != 0)
+            throw runtime_error("Update method not understood. It should be either \"eulerian\" or \"ALE\"");
     }
     //---------------------------------------------------------------------------
     
@@ -193,7 +199,10 @@ int main(int argc, char **argv)
     eulerianIntegration->setTissue(tissue);
     eulerianIntegration->setNodeDOFs({"x","y","z"});
     eulerianIntegration->setCellDOFs({"Paux"});
-    eulerianIntegration->setSingleIntegrand(eulerianUpdate);
+    if(updateMethod.compare("eulerian"))
+        eulerianIntegration->setSingleIntegrand(eulerianUpdate);
+    else
+        eulerianIntegration->setSingleIntegrand(arbLagEulUpdate);
     eulerianIntegration->setNumberOfIntegrationPointsSingleIntegral(3);
     eulerianIntegration->setNumberOfIntegrationPointsDoubleIntegral(1);
     eulerianIntegration->Update();
