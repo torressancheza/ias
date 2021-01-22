@@ -64,7 +64,7 @@ int main(int argc, char **argv)
     double nr_soltol{1.E-8};
         
     string  fEnerName{"energies.txt"};
-    string  updateMethod{"Eulerian"};
+    string  updateMethod{"eulerian"};
     ofstream fEner;
     
     if(argc == 2)
@@ -199,7 +199,7 @@ int main(int argc, char **argv)
     eulerianIntegration->setTissue(tissue);
     eulerianIntegration->setNodeDOFs({"x","y","z"});
     eulerianIntegration->setCellDOFs({"Paux"});
-    if(updateMethod.compare("eulerian"))
+    if(updateMethod.compare("eulerian")==0)
         eulerianIntegration->setSingleIntegrand(eulerianUpdate);
     else
         eulerianIntegration->setSingleIntegrand(arbLagEulUpdate);
@@ -310,6 +310,16 @@ int main(int argc, char **argv)
             
             if (conv)
             {
+                if(updateMethod.compare("ale")==0)
+                {
+                    for(auto cell: tissue->getLocalCells())
+                    {
+                        cell->getNodeField("x") += cell->getCellField("X")/cell->getCellField("A") -  cell->getCellField("X0")/cell->getCellField("A0");
+                        cell->getNodeField("y") += cell->getCellField("Y")/cell->getCellField("A") -  cell->getCellField("Y0")/cell->getCellField("A0");
+                        cell->getNodeField("z") += cell->getCellField("Z")/cell->getCellField("A") -  cell->getCellField("Z0")/cell->getCellField("A0");
+                    }
+                }
+                
                 time += deltat;
                 tissue->getTissField("time") = time;
 

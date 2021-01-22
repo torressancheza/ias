@@ -280,7 +280,6 @@ void eulerianUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     int idx_x0 = fill->idxNodeField("x0");
     int idx_z0 = fill->idxNodeField("z0");
 
-    
     //[2.1] Geometry in the configuration at previous time-step
     tensor<double,1>      x0 = bfs * nborFields(all,range(idx_x0,idx_z0));
     tensor<double,2>     Dx0 = Dbfs.T() * nborFields(all,range(idx_x0,idx_z0));
@@ -352,8 +351,6 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
 
     tensor<double,1>&  globFields = fill->cellFields;
     tensor<double,1> V = globFields(range(fill->idxCellField("X"),fill->idxCellField("Z")))/globFields(fill->idxCellField("A")) - globFields(range(fill->idxCellField("X0"),fill->idxCellField("Z0")))/globFields(fill->idxCellField("A0"));
-
-//    V = 0.0; //FIXME: eliminate me
     
     tensor<double,1>&  tissFields = fill->tissFields;
 
