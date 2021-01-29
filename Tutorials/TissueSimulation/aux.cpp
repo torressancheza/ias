@@ -354,7 +354,6 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     
     tensor<double,1>&  tissFields = fill->tissFields;
 
-    
     tensor<double,3> voigt = {{{1.0,0.0},{0.0,0.0}},
                               {{0.0,0.0},{0.0,1.0}},
                               {{0.0,1.0},{1.0,0.0}}};
@@ -445,13 +444,22 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     tensor<double,2> dshear = 4.0/shear * ((J*J)/(I1*I1*I1) * dI1 - (J/jacR/(I1*I1)) * djac);
     tensor<double,4> ddshear = 4.0/shear * (-3.0 * (J*J)/(I1*I1*I1*I1) * outer(dI1,dI1) + (J*J)/(I1*I1*I1) * ddI1 + 2.0 * (J/jacR/(I1*I1*I1)) * (outer(dI1,djac)+outer(djac,dI1)) - (1./(jacR*jacR)/(I1*I1)) * outer(djac,djac) - (J/jacR/(I1*I1)) * ddjac) - (1./shear) * outer(dshear,dshear);
 
-    double auxtanh = tanh(tanh_steepness*(shear-min_shear));
-    double energy = 0.25 * aleStrength * (auxtanh+1.0) * shear * shear;
-    double aux_rhs = 0.5 * (auxtanh+1.0) * shear + 0.25 * shear * shear * (1.0-auxtanh*auxtanh) * tanh_steepness;
-    rhs_n += fill->w_sample * aleStrength * aux_rhs * (dshear * proj0); //The projector makes sure that these forces only apply to the tangent displacements
-    A_nn  += fill->w_sample * aleStrength * aux_rhs * product(ddshear, proj0,{{1,0}}).transpose({0,3,1,2});
-    double aux_mat = 0.5 * (auxtanh+1.0) + shear * (1.0-auxtanh*auxtanh) * tanh_steepness - 0.5 * shear * shear * auxtanh * (1.0-auxtanh*auxtanh) * tanh_steepness * tanh_steepness;
-    A_nn  += fill->w_sample * aleStrength * aux_mat * outer(dshear * proj0,dshear);
+//    double auxtanh = tanh(tanh_steepness*(shear-min_shear));
+//    double energy = 0.25 * aleStrength * (auxtanh+1.0) * shear * shear;
+//    double aux_rhs = 0.5 * (auxtanh+1.0) * shear + 0.25 * shear * shear * (1.0-auxtanh*auxtanh) * tanh_steepness;
+//    rhs_n += fill->w_sample * aleStrength * aux_rhs * (dshear * proj0); //The projector makes sure that these forces only apply to the tangent displacements
+//    A_nn  += fill->w_sample * aleStrength * aux_rhs * product(ddshear, proj0,{{1,0}}).transpose({0,3,1,2});
+//    double aux_mat = 0.5 * (auxtanh+1.0) + shear * (1.0-auxtanh*auxtanh) * tanh_steepness - 0.5 * shear * shear * auxtanh * (1.0-auxtanh*auxtanh) * tanh_steepness * tanh_steepness;
+//    A_nn  += fill->w_sample * aleStrength * aux_mat * outer(dshear * proj0,dshear);
+    
+    
+//    double energy = 0.5 * aleStrength * shear * shear;
+    rhs_n += fill->w_sample * aleStrength * shear * (dshear * proj0); //The projector makes sure that these forces only apply to the tangent displacements
+    A_nn  += fill->w_sample * aleStrength * outer(dshear*proj0,dshear) + fill->w_sample * aleStrength * shear * product(ddshear, proj0,{{1,0}}).transpose({0,3,1,2});
+    
+    rhs_n += fill->w_sample * aleStrength * (J-1./(1.+H0)) * djac/jacR;
+    A_nn  += fill->w_sample * aleStrength * (outer(djac/jacR,djac/jacR) + (J-1./(1.+H0)) * ddjac/jacR);
+
 
 //    cout << aux_rhs << endl;
 //    cout << shear << " " << auxtanh+1.0 << endl;

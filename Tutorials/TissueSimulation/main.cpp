@@ -112,7 +112,7 @@ int main(int argc, char **argv)
         
         config.readInto(updateMethod, "updateMethod");
         
-        if(updateMethod.compare("eulerian")!=0 and updateMethod.compare("ALE") != 0)
+        if(updateMethod.compare("eulerian")!=0 and updateMethod.compare("ale") != 0)
             throw runtime_error("Update method not understood. It should be either \"eulerian\" or \"ALE\"");
     }
     //---------------------------------------------------------------------------
@@ -314,9 +314,9 @@ int main(int argc, char **argv)
                 {
                     for(auto cell: tissue->getLocalCells())
                     {
-                        cell->getNodeField("x") += cell->getCellField("X")/cell->getCellField("A") -  cell->getCellField("X0")/cell->getCellField("A0");
-                        cell->getNodeField("y") += cell->getCellField("Y")/cell->getCellField("A") -  cell->getCellField("Y0")/cell->getCellField("A0");
-                        cell->getNodeField("z") += cell->getCellField("Z")/cell->getCellField("A") -  cell->getCellField("Z0")/cell->getCellField("A0");
+                        cell->getNodeField("x") += cell->getCellField("X")/cell->getCellField("A") - cell->getCellField("X0")/cell->getCellField("A0");
+                        cell->getNodeField("y") += cell->getCellField("Y")/cell->getCellField("A") - cell->getCellField("Y0")/cell->getCellField("A0");
+                        cell->getNodeField("z") += cell->getCellField("Z")/cell->getCellField("A") - cell->getCellField("Z0")/cell->getCellField("A0");
                     }
                 }
                 
