@@ -188,12 +188,12 @@ namespace ias
         for(int i = 0; i < nCells; i++)
         {
             int fnamesize = fileNames[i].size();
-            MPI_Bcast(&fnamesize, 1, MPI_INT, 0, MPI_COMM_WORLD);
+            MPI_Bcast(&fnamesize, 1, MPI_INT, 0, _comm);
 
             if (_myPart != 0)
                 fileNames[i].resize(fnamesize);
 
-            MPI_Bcast(const_cast<char*>(fileNames[i].data()), fnamesize, MPI_CHAR, 0, MPI_COMM_WORLD);
+            MPI_Bcast(const_cast<char*>(fileNames[i].data()), fnamesize, MPI_CHAR, 0, _comm);
         }
 
         _nCells = nCells;

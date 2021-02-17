@@ -43,7 +43,7 @@ namespace ias
                 _comm = comm;
                 MPI_Comm_rank(_comm, &_myPart);
                 MPI_Comm_size(_comm, &_nParts);
-
+                
                 _nCellPart.resize(_nParts);
                 _offsetPart.resize(_nParts+1);
             }
@@ -196,6 +196,11 @@ namespace ias
         
             void cellDivision(std::vector<int> cellIds, double sep, double elArea);
 
+            void setTissueFieldNames(std::vector<std::string> tissFieldNames)
+            {    _tissFieldNames = tissFieldNames;    }
+
+            const std::vector<std::string> getTissueFieldNames() const
+            {    return _tissFieldNames;    }
             /** @} */
 
         private:

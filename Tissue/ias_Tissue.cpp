@@ -149,7 +149,11 @@ namespace ias
         
         _mapTissFieldNames.clear();
         for(size_t i = 0; i < _tissFieldNames.size(); i++)
-            _mapTissFieldNames[_tissFieldNames[i]] = i;       
+            _mapTissFieldNames[_tissFieldNames[i]] = i;      
+
+        //FIXME: is this ok here?
+        if( _tissFields.size() != _tissFieldNames.size())
+            _tissFields.resize(_tissFieldNames.size());
     }
 
     void Tissue::calculateCellCellAdjacency(double eps)

@@ -126,11 +126,13 @@ int main(int argc, char **argv)
         tissueGen->addNodeFields({"vx","vy","vz"});
         tissueGen->addNodeFields({"x0","y0","z0"});
         tissueGen->addNodeFields({"vx0","vy0","vz0"});
+        tissueGen->addNodeFields({"xR","yR","zR"});
 
         tissueGen->addCellFields({"P","Paux","P0","Paux0"});
         tissueGen->addCellFields({"A","X","Y","Z"});
         tissueGen->addCellFields({"A0","X0","Y0","Z0"});
         tissueGen->addCellFields({"Ai"});
+        tissueGen->addCellFields({"AR"});
 
         tissueGen->addCellFields({"intEL","intCL","intSt","tension","kappa","viscosity","frictiont","frictionn"});
         
@@ -183,6 +185,25 @@ int main(int argc, char **argv)
         
     tissue->saveVTK("Cell","_t"+to_string(1));
 
+
+    vector<RCP<Tissue>> serialTissues;
+    for(auto cell: tissue->getLocalCells())
+    {
+        RCP<Tissue> cellTissue = rcp(new Tissue(MPI_COMM_SELF));
+        cellTissue->addCellToTissue(cell);
+        cellTissue->setTissueFieldNames({"deltat", "ale_viscosity", "ale_penalty_shear", "ale_penalty_stretch", "ale_max_shear", "ale_min_stretch", "ale_max_stretch"});
+        cellTissue->Update();
+        cellTissue->calculateCellCellAdjacency(3.0*intCL+intEL);
+        cellTissue->getTissField("deltat") = deltat;
+        cellTissue->getTissField("ale_viscosity") = 1.E-2;
+        cellTissue->getTissField("ale_penalty_shear")  = 1.E-4;
+        cellTissue->getTissField("ale_penalty_stretch")  = 1.E-4;
+        cellTissue->getTissField("ale_max_shear") = 0.5;
+        cellTissue->getTissField("ale_min_stretch") = 0.5;
+        cellTissue->getTissField("ale_max_stretch") = 2.0;
+        serialTissues.push_back(cellTissue);
+    }
+    
     RCP<Integration> physicsIntegration = rcp(new Integration);
     physicsIntegration->setTissue(tissue);
     physicsIntegration->setNodeDOFs({"vx","vy","vz"});
@@ -190,22 +211,10 @@ int main(int argc, char **argv)
     physicsIntegration->setSingleIntegrand(internal);
     physicsIntegration->setDoubleIntegrand(interaction);
     physicsIntegration->setNumberOfIntegrationPointsSingleIntegral(3);
-    physicsIntegration->setNumberOfIntegrationPointsDoubleIntegral(1);
+    physicsIntegration->setNumberOfIntegrationPointsDoubleIntegral(3);
     physicsIntegration->setCellIntegralFields({"A","X","Y","Z","A0","X0","Y0","Z0","Ai"});
     physicsIntegration->setCellDOFsInInteractions(false);
     physicsIntegration->Update();
-
-    RCP<Integration> eulerianIntegration = rcp(new Integration);
-    eulerianIntegration->setTissue(tissue);
-    eulerianIntegration->setNodeDOFs({"x","y","z"});
-    eulerianIntegration->setCellDOFs({"Paux"});
-    if(updateMethod.compare("eulerian")==0)
-        eulerianIntegration->setSingleIntegrand(eulerianUpdate);
-    else
-        eulerianIntegration->setSingleIntegrand(arbLagEulUpdate);
-    eulerianIntegration->setNumberOfIntegrationPointsSingleIntegral(3);
-    eulerianIntegration->setNumberOfIntegrationPointsDoubleIntegral(1);
-    eulerianIntegration->Update();
 
     RCP<solvers::TrilinosAztecOO> physicsLinearSolver = rcp(new solvers::TrilinosAztecOO);
     physicsLinearSolver->setIntegration(physicsIntegration);
@@ -217,16 +226,6 @@ int main(int argc, char **argv)
     physicsLinearSolver->setResidueTolerance(1.E-8);
     physicsLinearSolver->Update();
     
-    RCP<solvers::TrilinosAztecOO> eulerianLinearSolver = rcp(new solvers::TrilinosAztecOO);
-    eulerianLinearSolver->setIntegration(eulerianIntegration);
-    eulerianLinearSolver->addAztecOOParameter("solver","gmres");
-    eulerianLinearSolver->addAztecOOParameter("precond","dom_decomp");
-    eulerianLinearSolver->addAztecOOParameter("subdomain_solve","ilu");
-    eulerianLinearSolver->addAztecOOParameter("output","none");
-    eulerianLinearSolver->setMaximumNumberOfIterations(500);
-    eulerianLinearSolver->setResidueTolerance(1.E-8);
-    eulerianLinearSolver->Update();
-    
     RCP<solvers::NewtonRaphson> physicsNewtonRaphson = rcp(new solvers::NewtonRaphson);
     physicsNewtonRaphson->setLinearSolver(physicsLinearSolver);
     physicsNewtonRaphson->setSolutionTolerance(1.E-8);
@@ -235,20 +234,61 @@ int main(int argc, char **argv)
     physicsNewtonRaphson->setVerbosity(true);
     physicsNewtonRaphson->Update();
     
-    RCP<solvers::NewtonRaphson> eulerianNewtonRaphson = rcp(new solvers::NewtonRaphson);
-    eulerianNewtonRaphson->setLinearSolver(eulerianLinearSolver);
-    eulerianNewtonRaphson->setSolutionTolerance(1.E-8);
-    eulerianNewtonRaphson->setResidueTolerance(1.E-8);
-    eulerianNewtonRaphson->setMaximumNumberOfIterations(5);
-    eulerianNewtonRaphson->setVerbosity(true);
-    eulerianNewtonRaphson->Update();
-    
+    vector<RCP<Integration>> eulerianIntegrations;
+    vector<RCP<solvers::TrilinosAztecOO>> eulerianLinearSolvers;
+    vector<RCP<solvers::NewtonRaphson>> eulerianNewtonRaphsons;
+    for(auto serialTissue: serialTissues)
+    {
+        RCP<Integration> eulerianIntegration = rcp(new Integration);
+        eulerianIntegration->setTissue(serialTissue);
+        eulerianIntegration->setNodeDOFs({"x","y","z"});
+        eulerianIntegration->setCellDOFs({"Paux"});
+        if(updateMethod.compare("eulerian")==0)
+            eulerianIntegration->setSingleIntegrand(eulerianUpdate);
+        else
+            eulerianIntegration->setSingleIntegrand(arbLagEulUpdate);
+        eulerianIntegration->setNumberOfIntegrationPointsSingleIntegral(3);
+        eulerianIntegration->setNumberOfIntegrationPointsDoubleIntegral(1);
+        eulerianIntegration->Update();
+        eulerianIntegrations.push_back(eulerianIntegration);
+
+        RCP<solvers::TrilinosAztecOO> eulerianLinearSolver = rcp(new solvers::TrilinosAztecOO);
+        eulerianLinearSolver->setIntegration(eulerianIntegration);
+        eulerianLinearSolver->addAztecOOParameter("solver","gmres");
+        eulerianLinearSolver->addAztecOOParameter("precond","dom_decomp");
+        eulerianLinearSolver->addAztecOOParameter("subdomain_solve","ilu");
+        eulerianLinearSolver->addAztecOOParameter("output","none");
+        eulerianLinearSolver->setMaximumNumberOfIterations(500);
+        eulerianLinearSolver->setResidueTolerance(1.E-8);
+        eulerianLinearSolver->Update();
+        eulerianLinearSolvers.push_back(eulerianLinearSolver);
+
+        RCP<solvers::NewtonRaphson> eulerianNewtonRaphson = rcp(new solvers::NewtonRaphson);
+        eulerianNewtonRaphson->setLinearSolver(eulerianLinearSolver);
+        eulerianNewtonRaphson->setSolutionTolerance(1.E-8);
+        eulerianNewtonRaphson->setResidueTolerance(1.E-8);
+        eulerianNewtonRaphson->setMaximumNumberOfIterations(5);
+        eulerianNewtonRaphson->setVerbosity(false);
+        eulerianNewtonRaphson->Update();
+
+        eulerianNewtonRaphsons.push_back(eulerianNewtonRaphson);
+    }
+
     int step{};
     double time = tissue->getTissField("time");
 
     fEner.open (fEnerName);
     fEner.close();
     
+    physicsIntegration->computeSingleIntegral();
+    for(auto cell: tissue->getLocalCells())
+    {
+        cell->getNodeField("xR") = cell->getNodeField("x");
+        cell->getNodeField("yR") = cell->getNodeField("y");
+        cell->getNodeField("zR") = cell->getNodeField("z");
+        cell->getCellField("AR") = cell->getCellField("A");
+    }
+
     int conv{};
     bool rec_str{};
     while(time < totTime)
@@ -297,27 +337,35 @@ int main(int argc, char **argv)
         auto finish_3 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_3 = finish_3 - finish_2;
         
-        
+        auto finish_4 = std::chrono::high_resolution_clock::now();
+        auto finish_4_2 = std::chrono::high_resolution_clock::now();
+
         if ( conv )
         {
             int nIter = physicsNewtonRaphson->getNumberOfIterations();
             
             if(tissue->getMyPart()==0)
-                cout << "Solving for displacement along the normal" << endl;
+                cout << "Solving for displacement with " << updateMethod  << endl;
 
-            eulerianNewtonRaphson->solve();
-            conv = eulerianNewtonRaphson->getConvergence();
+            for(auto eulerianNewtonRaphson: eulerianNewtonRaphsons)
+            {
+                eulerianNewtonRaphson->solve();
+                conv = eulerianNewtonRaphson->getConvergence();
+                if(not conv)
+                    break;
+            }
+            MPI_Allreduce(MPI_IN_PLACE, &conv, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+            finish_4 = std::chrono::high_resolution_clock::now();
             
             if (conv)
             {
-                if(updateMethod.compare("ale")==0)
+                if(tissue->getMyPart()==0)
+                    cout << "Solved!"  << endl;
+                for(auto cell: tissue->getLocalCells())
                 {
-                    for(auto cell: tissue->getLocalCells())
-                    {
-                        cell->getNodeField("x") += cell->getCellField("X")/cell->getCellField("A") - cell->getCellField("X0")/cell->getCellField("A0");
-                        cell->getNodeField("y") += cell->getCellField("Y")/cell->getCellField("A") - cell->getCellField("Y0")/cell->getCellField("A0");
-                        cell->getNodeField("z") += cell->getCellField("Z")/cell->getCellField("A") - cell->getCellField("Z0")/cell->getCellField("A0");
-                    }
+                    cell->getNodeField("x") += cell->getCellField("X")/cell->getCellField("A") - cell->getCellField("X0")/cell->getCellField("A0");
+                    cell->getNodeField("y") += cell->getCellField("Y")/cell->getCellField("A") - cell->getCellField("Y0")/cell->getCellField("A0");
+                    cell->getNodeField("z") += cell->getCellField("Z")/cell->getCellField("A") - cell->getCellField("Z0")/cell->getCellField("A0");
                 }
                 
                 time += deltat;
@@ -337,14 +385,6 @@ int main(int argc, char **argv)
                     cell->getNodeField("vz") *= deltat;
                 }
 
-//                if(tissue->getMyPart() == 0)
-//                {
-//                    fEner.open (fEnerName,ios::app);
-//                    fEner << setprecision(8) << scientific;
-//                    fEner << time << " " << deltat << " " << physicsIntegration->getGlobalIntegral(0) << " " << physicsIntegration->getGlobalIntegral(1) << " " << physicsIntegration->getGlobalIntegral(2) << " " << physicsIntegration->getGlobalIntegral(3) << endl;
-//                    fEner.close();
-//                }
-
                 if(nIter < nr_maxite)
                 {
                     deltat /= stepFac;
@@ -358,10 +398,12 @@ int main(int argc, char **argv)
                 if(deltat > maxDeltat)
                     deltat = maxDeltat;
                 step++;
+
+                finish_4_2 = std::chrono::high_resolution_clock::now();
             }
             else
             {
-                cout << "CAREFUL!!! Solver for avxiliary field failed!" << endl;
+                cout << "failed!" << endl;
                 deltat *= stepFac;
                 for(auto cell: tissue->getLocalCells())
                 {
@@ -387,9 +429,8 @@ int main(int argc, char **argv)
             }
             tissue->updateGhosts();
         }
-
-        auto finish_4 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_4 = finish_4 - finish_3;
+        std::chrono::duration<double> elapsed_4_2 = finish_4_2 - finish_4;
         
         tissue->getTissField("deltat") = deltat;
         
@@ -408,6 +449,7 @@ int main(int argc, char **argv)
             cout << "    "<< "Calculate int elements: " << elapsed_2.count() << endl;
             cout << "    "<< "Newton Raphson for v: " << elapsed_3.count() << endl;
             cout << "    "<< "Newton Raphson for x: " << elapsed_4.count() << endl;
+            cout << "    "<< "Print output: " << elapsed_4_2.count() << endl;
             cout << "    "<< "Update cell adjacency: " << elapsed_5.count() << endl;
         }
     }

@@ -30,8 +30,7 @@ namespace ias
                           
             /** @name Constructor/destructor
             *  @{ */
-            /*! @brief Constructor
-             *  @param comm   MPI_Communicator (default value MPI_COMM_WORLD) */
+            /*! @brief Constructor */
             Integration(){}
             /*! @brief Destructor             */
             ~Integration(){};
@@ -172,6 +171,8 @@ namespace ias
             {    return _vector;    }
             const Teuchos::RCP<Epetra_FEVector> getSolution() const
             {    return _sol;    }
+            const Teuchos::RCP<Epetra_FECrsMatrix> getMatrix() const
+            {    return _matrix;    }
             /** @} */
         
             void setCellDOFsInInteractions(bool cellDOFsInt)
