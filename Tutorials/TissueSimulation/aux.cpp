@@ -319,8 +319,8 @@ void eulerianUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     tensor<double,3>& A_ng  = fill->mat_nc;
     tensor<double,3>& A_gn  = fill->mat_cn;
 
-    rhs_n += fill->w_sample * jac0 * (((x-x0)-(v-V)) * normal0) * outer(bfs,normal0);
-    A_nn  += fill->w_sample * jac0 * outer(outer(bfs,normal0),outer(bfs,normal0));
+    rhs_n += fill->w_sample * jac0 * outer(bfs,x-(x0+V+((v-V)*normal0)*normal0));
+    A_nn  += fill->w_sample * jac0 * outer(outer(bfs,bfs),Identity(3)).transpose({0,2,1,3});
     
     rhs_n          += fill->w_sample * pressure2 * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
     rhs_g(0)       += deltat * (fill->w_sample * (jac * xn-jac0 * x0n0)/3.0);
