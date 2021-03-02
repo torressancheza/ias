@@ -15,6 +15,7 @@
 #include <vtkCleanPolyData.h>
 #include <vtkCurvatures.h>
 #include <vtkClipClosedSurface.h>
+#include <vtkTriangle.h>
 #include <vtkPlane.h>
 #include <vtkPlaneCollection.h>
 //#include <vtkCenterOfMass.h>
@@ -195,26 +196,132 @@ namespace ias
             //Check that boundaries match with each other
             if(polydata_b->GetPoints()->GetNumberOfPoints()!=polydata_b2->GetPoints()->GetNumberOfPoints())
             {
-                vtkSmartPointer<vtkPolyDataWriter> writer = vtkSmartPointer<vtkPolyDataWriter>::New();
-                writer->SetInputData(polydata_1);
-                writer->SetFileName("error1.vtk");
-                writer->Update();
+                //Let's fix this...
+                int n{};
+                vector<int> removedCells;
+                vtkSmartPointer<vtkCellArray> cells = vtkSmartPointer<vtkCellArray>::New();
+                vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+                for(int i = 0; i < polydata_2->GetNumberOfPoints(); i++)
+                    points->InsertNextPoint(polydata_2->GetPoint(i));
+
+                //Add the last points
+                vtkSmartPointer<vtkCellLocator> cellLocator = vtkCellLocator::New();
+                cellLocator->SetDataSet(polydata_2);
+                cellLocator->BuildLocator();
+
+                for(int i = 0; i < polydata_b->GetNumberOfPoints(); i++)
+                {
+                    double* x = polydata_2->GetPoints()->GetPoint(i);
+
+                    double cpoint[3];
+                    vtkIdType cellId;
+                    int subId;
+                    double dist;
+                    cellLocator->FindClosestPoint(x, cpoint, cellId, subId, dist);
+
+                    //If the distance is larger than the tolerance, this point has been erased by the remesher...
+                    if(dist > 1.E-8)
+                    {
+                        vtkSmartPointer<vtkCell> cell = polydata_2->GetCell(cellId);
+                        vtkSmartPointer<vtkIdList> cellPoints = cell->GetPointIds();
+
+                        int i1 = cellPoints->GetId(0);
+                        int i2 = cellPoints->GetId(1);
+                        int i3 = cellPoints->GetId(2);
+
+                        vector<pair<int,int>> edges = {{i1,i2},{i2,i3},{i3,i1}};
+
+                        points->InsertNextPoint(x);
+
+                        double area = 0.0;
+
+                        pair<int,int> edgeIds;
+                        for(auto& e: edges)
+                        {
+                            vtkSmartPointer<vtkIdList> nborsIds = vtkIdList::New();
+                            vtkSmartPointer<vtkIdList> edge = vtkIdList::New();
+                            edge->InsertNextId(e.first);
+                            edge->InsertNextId(e.second);
+                            
+                            polydata_2->GetCellNeighbors(cellId, edge, nborsIds);
+
+                            if(nborsIds->GetNumberOfIds() == 0)
+                            {
+                                double p1[3]; 
+                                polydata_2->GetPoints()->GetPoint(e.first, p1);
+                                double p2[3];
+                                polydata_2->GetPoints()->GetPoint(e.second, p2);
+                                
+                                double area_new = vtkTriangle::TriangleArea(x, p1, p2);
+                                if(area_new > area)
+                                {
+                                    area = area_new;
+                                    edgeIds.first = e.first;
+                                    edgeIds.second = e.second;
+                                }
+                            }
+                        }
+                        if(edgeIds.first != 0 and edgeIds.second != 0)
+                        {
+                            double p1[3]; 
+                            polydata_2->GetPoints()->GetPoint(edgeIds.first, p1);
+                            double p2[3];
+                            polydata_2->GetPoints()->GetPoint(edgeIds.second, p2);
+                            int opposite = edgeIds.first == i1 ? (edgeIds.second == i2 ? i3 : i2) : (edgeIds.first == i2 ? (edgeIds.second == i1 ? i3: i1) : (edgeIds.second == i1 ? i2: i1));
+                            
+
+                            vtkSmartPointer<vtkIdList> triangle = vtkSmartPointer<vtkIdList>::New();
+                            triangle->InsertNextId(opposite);
+                            triangle->InsertNextId(edgeIds.first);
+                            triangle->InsertNextId(polydata_2->GetNumberOfPoints()+n);
+                            cells->InsertNextCell(triangle);
+
+                            triangle = vtkSmartPointer<vtkIdList>::New();
+                            triangle->InsertNextId(opposite);
+                            triangle->InsertNextId(polydata_2->GetNumberOfPoints()+n);
+                            triangle->InsertNextId(edgeIds.second);
+                            cells->InsertNextCell(triangle);
+
+                            removedCells.push_back(cellId);
+                            n++;
+                        }
+                        else
+                            cout << "PROBLEMA" << endl;
+                    }
+
+                    for(int i =0; i < polydata_2->GetNumberOfCells(); i++)
+                    {
+                        if(find(removedCells.begin(), removedCells.end(), i) == removedCells.end())
+                            cells->InsertNextCell(polydata_2->GetCell(i));
+                    }
+                    
+                    polydata_2 = vtkSmartPointer<vtkPolyData>::New();
+                    polydata_2->SetPoints(points);
+                    polydata_2->SetPolys(cells);
+                }
+
+
+
+                // vtkSmartPointer<vtkPolyDataWriter> writer = vtkSmartPointer<vtkPolyDataWriter>::New();
+                // writer->SetInputData(polydata_1);
+                // writer->SetFileName("error1.vtk");
+                // writer->Update();
                 
-                writer->SetInputData(polydata_2);
-                writer->SetFileName("error2.vtk");
-                writer->Update();
+                // writer->SetInputData(polydata_2);
+                // writer->SetFileName("error2.vtk");
+                // writer->Update();
                 
-                writer->SetInputData(polydata_b);
-                writer->SetFileName("errorb1.vtk");
-                writer->Update();
+                // writer->SetInputData(polydata_b);
+                // writer->SetFileName("errorb1.vtk");
+                // writer->Update();
                 
-                writer->SetInputData(polydata_b2);
-                writer->SetFileName("errorb2.vtk");
-                writer->Update();
+                // writer->SetInputData(polydata_b2);
+                // writer->SetFileName("errorb2.vtk");
+                // writer->Update();
                 
-                throw runtime_error("Cell::cellDivision: Something went wrong when dividing the cell... the number of points in the boundary of the cleavage plane and the remaining part of the cell do not coincide!");
+                // throw runtime_error("Cell::cellDivision: Something went wrong when dividing the cell... the number of points in the boundary of the cleavage plane and the remaining part of the cell do not coincide!");
             }
-            else
+            // else
             {
                 vtkSmartPointer<vtkPointLocator> loc = vtkSmartPointer<vtkPointLocator>::New();
 
