@@ -211,7 +211,7 @@ namespace ias
 
                 for(int i = 0; i < polydata_b->GetNumberOfPoints(); i++)
                 {
-                    double* x = polydata_2->GetPoints()->GetPoint(i);
+                    double* x = polydata_b->GetPoints()->GetPoint(i);
 
                     double cpoint[3];
                     vtkIdType cellId;
@@ -221,7 +221,7 @@ namespace ias
 
                     //If the distance is larger than the tolerance, this point has been erased by the remesher...
                     if(dist > 1.E-8)
-                    {
+                    {                        
                         vtkSmartPointer<vtkCell> cell = polydata_2->GetCell(cellId);
                         vtkSmartPointer<vtkIdList> cellPoints = cell->GetPointIds();
 
