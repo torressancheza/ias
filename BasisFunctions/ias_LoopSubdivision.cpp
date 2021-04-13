@@ -138,18 +138,18 @@ namespace ias
             _adjyEN_i[e+1] = _adjyEN_i[e] + adjyNN[conn[0]].size() + 6;
         }
         
-//        for(int i = 0; i < _adjyEN_i.size()-1; i++)
-//        {
-//            cout << i << ": ";
-//            for(int j = _adjyEN_i[i]; j < _adjyEN_i[i+1]; j++)
-//            {
-//                cout << _adjyEN_j[j] << " ";
-//            }
-//            cout << endl;
-//        }
+    //    for(int i = 0; i < _adjyEN_i.size()-1; i++)
+    //    {
+    //        cout << i << "(" << _adjyEN_i[i+1]-_adjyEN_i[i]<< "): ";
+    //        for(int j = _adjyEN_i[i]; j < _adjyEN_i[i+1]; j++)
+    //        {
+    //            cout << _adjyEN_j[j] << " ";
+    //        }
+    //        cout << endl;
+    //    }
         
         
-        //TODO: I mark this as a todo but it is mostly to stress what we are doing here. Instead of computing only the valances present in the mesh (which would be more efficient here) we calculate all valances from 4 to 12 (any mesh with less than 4 or more than 12 as valance is a distaster anyway). That way every class will have the same valances and we don't need to send this information via MPI later (which saves time). Types are then valance-4 (0 to 8).
+        //TODO: I mark this as a todo but it is mostly to stress what we are doing here. Instead of computing only the valences present in the mesh (which would be more efficient here) we calculate all valances from 4 to 12 (any mesh with less than 4 or more than 12 as valance is a distaster anyway). That way every class will have the same valances and we don't need to send this information via MPI later (which saves time). Types are then valance-4 (0 to 8).
         for(int e = 0; e < nElem; e++)
             if(_etype[e] < 0 or _etype[e] > 8)
                 throw runtime_error("Element " + to_string(e) + " has a valence " + to_string(_etype[e]+4) + " (<4 or > 12)" );

@@ -10,6 +10,8 @@
 #ifndef _Integration_h
 #define _Integration_h
 
+#include <functional>
+
 #include <Teuchos_RCP.hpp>
 #include <Epetra_MpiComm.h>
 #include <Epetra_FEVector.h>
@@ -73,11 +75,16 @@ namespace ias
                 for(auto s: setGlobDOFs)
                     _cellDOFNames.push_back(s);
             }
+                        
             /*! @brief Set function to be integrated at single-cell level  */
             void setSingleIntegrand( void (*singleIntegrand)(Teuchos::RCP<SingleIntegralStr>) )
             {    _singleIntegrand = singleIntegrand;    }
+            void setSingleIntegrand( std::function<void(Teuchos::RCP<SingleIntegralStr>)> singleIntegrand)
+            {    _singleIntegrand = singleIntegrand;    }
             /*! @brief Set function to be integrated as a double integral (over two cells)  */
             void setDoubleIntegrand(void (*doubleIntegrand)(Teuchos::RCP<DoubleIntegralStr>))
+            {    _doubleIntegrand = doubleIntegrand;    }
+            void setDoubleIntegrand(std::function<void(Teuchos::RCP<DoubleIntegralStr>)> doubleIntegrand)
             {    _doubleIntegrand = doubleIntegrand;    }
             /*! @brief Set global integrals */
             void setTissIntegralFields(std::vector<std::string> names)
@@ -180,8 +187,9 @@ namespace ias
         
         private:
         
-            void (*_singleIntegrand)(Teuchos::RCP<SingleIntegralStr>) = nullptr;
-            void (*_doubleIntegrand)(Teuchos::RCP<DoubleIntegralStr>) = nullptr;
+            std::function<void(Teuchos::RCP<SingleIntegralStr>)> _singleIntegrand = nullptr;
+            std::function<void(Teuchos::RCP<DoubleIntegralStr>)> _doubleIntegrand = nullptr;
+
         
             Teuchos::RCP<Tissue>         _tissue = Teuchos::null;
 

@@ -870,6 +870,7 @@ namespace ias
     {
         using namespace std;
         using Teuchos::RCP;
+        constexpr size_t max_tries=10;
         
         size_t maxCellId = _checkCellIds();
 
@@ -887,20 +888,37 @@ namespace ias
         for(int i = 0; i < _myPart; i++)
             loc_offset += nNewCells[i];
         
-        int n{};
-        for(auto c: _cells)
+
+        int loc_nCells = _cells.size();
+        // for(auto c: _cells)
+        for(int i = 0; i < loc_nCells; i++)
         {
+            auto c = _cells[i];
+
             if(find(cellIds.begin(), cellIds.end(),c->getCellField("cellId")) != cellIds.end())
             {
-                RCP<Cell> newCell = c->cellDivision(sep, elArea);
-                c->getCellField("cellId") = maxCellId+1+loc_offset+n;
-                n++;
-                newCell->getCellField("cellId") = maxCellId+1+loc_offset+n;
-                n++;
+                RCP<Cell> newCell = Teuchos::null;
+                size_t ntries{};
+                while(true)
+                {
+                    try
+                    {
+                        newCell = c->cellDivision(sep, elArea);
+                        break;
+                    }
+                    catch (runtime_error err)
+                    {
+                        ntries++;
+                        if(ntries > max_tries)
+                            throw err;
+                    }
+                }
+                c->getCellField("cellId") = maxCellId+1+loc_offset+2*i+0;
+                newCell->getCellField("cellId") = maxCellId+1+loc_offset+2*i+1;
                 _cells.push_back(newCell);
             }
         }
-            
+        
         Update();
     }
 }
