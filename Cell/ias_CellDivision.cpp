@@ -21,6 +21,7 @@
 #include <vtkPlaneCollection.h>
 //#include <vtkCenterOfMass.h>
 #include <vtkIntegrateAttributes.h>
+#include <vtkFillHolesFilter.h>
 
 #include <vtkFeatureEdges.h>
 #include <vtkClipPolyData.h>
@@ -65,6 +66,7 @@ namespace ias
         vector<array<int,3>> cellsToAdd;
         vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
 
+        cout << "AQUI 0 " << endl;
         for(int i = 0; i < polydata->GetNumberOfPoints(); i++)
         {
             vtkSmartPointer<vtkIdList> cellIdList = vtkSmartPointer<vtkIdList>::New();
@@ -91,15 +93,14 @@ namespace ias
                     throw runtime_error("removePoints3Neighbours: Point identified with 3 neighbouring elements but there are more than 4 vertices forming the elements, which does not make sense. This is probably caused by a nonmanifold problem during remeshing.");
 
                 array<int,3> cell;
-                int n=0;
+                int n{};
                 for (auto j = ids.begin(); j != ids.end(); j++) 
                 {
                     if(i != (*j))
                     {
                         cell[n] = *j;
                         n++;
-                    }    
-                    
+                    }      
                 }
                 cellsToAdd.push_back(cell);
             }
@@ -109,27 +110,32 @@ namespace ias
             }
         }
 
+        cout << "AQUI 1 " << endl;
         vtkSmartPointer<vtkCellArray> cells = vtkSmartPointer<vtkCellArray>::New();
         for(int e = 0; e < polydata->GetNumberOfCells(); e++)
         {
             if(find(cellsToDelete.begin(), cellsToDelete.end(), e) == cellsToDelete.end())
             {
                 auto cell = polydata->GetCell(e);
+                if(cell->GetNumberOfPoints() != 3)
+                    throw runtime_error("removePoints3Neighbours: Element "+to_string(e)+" is not a triangle.");
                 int i1 = cell->GetPointId(0);
                 int i2 = cell->GetPointId(1);
                 int i3 = cell->GetPointId(2);
                 cells->InsertNextCell({newPointLabels[i1], newPointLabels[i2], newPointLabels[i3]});
             }
         }
+        cout << "AQUI 2 " << endl;
+
         for(auto& c: cellsToAdd)
         {
             cells->InsertNextCell({newPointLabels[c[0]], newPointLabels[c[1]], newPointLabels[c[2]]});
         }
 
+        polydata = vtkSmartPointer<vtkPolyData>::New();
         polydata->SetPoints(points);
         polydata->SetPolys(cells);
-
-
+        cout << "SALGO" << endl;
     }
 
     Teuchos::RCP<Cell> Cell::cellDivision(double sep, double el_area)
@@ -167,6 +173,7 @@ namespace ias
         normal /= sqrt(normal*normal);
         
         RCP<Cell> daughter = rcp(new Cell());
+        RCP<Cell> mother = rcp(new Cell());
 
         for(int n = -1; n <= 1; n+=2)
         {
@@ -212,6 +219,9 @@ namespace ias
 
             vtkClean->Update();
             polydata_1 = vtkClean->GetOutput();
+
+            if(polydata_1->GetNumberOfPoints() == 0 or polydata_1->GetNumberOfPolys() == 0)
+                throw runtime_error("Cell::cellDivision: Got polydata without points/cells");
 
             vtkSmartPointer<vtkFeatureEdges> edges = vtkSmartPointer<vtkFeatureEdges>::New();
             edges->SetInputData(polydata_1);
@@ -262,6 +272,10 @@ namespace ias
             vtkClean->Update();
 
             polydata_2 = vtkClean->GetOutput();
+
+
+            if(polydata_2->GetNumberOfPoints() == 0 or polydata_2->GetNumberOfPolys() == 0)
+                throw runtime_error("Cell::cellDivision: Got polydata without points/cells");
             
             vtkSmartPointer<vtkFeatureEdges> edges2 = vtkSmartPointer<vtkFeatureEdges>::New();
             edges2->SetInputData(polydata_2);
@@ -274,6 +288,8 @@ namespace ias
             auto polydata_b2 = edges2->GetOutput();
             
             polydata_2->BuildLinks();
+
+            cout << "LLEGO AQUI 1" << endl;
 
             //Check that boundaries match with each other
             if(polydata_b->GetPoints()->GetNumberOfPoints()!=polydata_b2->GetPoints()->GetNumberOfPoints())
@@ -291,6 +307,11 @@ namespace ias
                 cellLocator->SetDataSet(polydata_2);
                 cellLocator->BuildLocator();
 
+                vtkSmartPointer<vtkPolyDataWriter> writer = vtkSmartPointer<vtkPolyDataWriter>::New();
+                writer->SetInputData(polydata_2);
+                writer->SetFileName("polydata_2.vtk");
+                writer->Update();
+                
                 for(int i = 0; i < polydata_b->GetNumberOfPoints(); i++)
                 {
                     double* x = polydata_b->GetPoints()->GetPoint(i);
@@ -368,7 +389,7 @@ namespace ias
                             n++;
                         }
                         else
-                            throw runtime_error("Cell::cellDivision: edges not well defined");
+                            throw runtime_error("Cell::cellDivision: edges are not well defined");
                     }
                 }
 
@@ -383,71 +404,6 @@ namespace ias
                 polydata_2->SetPolys(cells);
 
             }
-            // else
-            // {
-            //     vtkSmartPointer<vtkPointLocator> loc = vtkSmartPointer<vtkPointLocator>::New();
-
-            //     loc->SetDataSet(polydata_b2);
-            //     loc->BuildLocator();
-                
-            //     vector<int> id_b2 ;
-            //     for(int i = 0; i < polydata_b->GetPoints()->GetNumberOfPoints(); i++)
-            //     {
-            //         double x_i[3];
-            //         polydata_b->GetPoints()->GetPoint(i, x_i );
-            //         int j = loc->FindClosestPoint(x_i);
-                    
-            //         id_b2.push_back(j);
-            //     }
-                
-            //     sort(id_b2.begin(),id_b2.end());
-                
-                
-            //     bool match=true;
-            //     if(int(id_b2.size()) != polydata_b2->GetPoints()->GetNumberOfPoints())
-            //     {
-            //         match = false;
-            //     }
-            //     else
-            //     {
-            //         for(int i = 0; i < int(id_b2.size()); i++)
-            //         {
-            //             if(i != id_b2[i])
-            //             {
-            //                 match=false;
-            //                 break;
-            //             }
-            //         }
-            //     }
-                
-            //     if(!match)
-            //     {
-            //         vtkSmartPointer<vtkPolyDataWriter> writer = vtkSmartPointer<vtkPolyDataWriter>::New();
-            //         writer->SetInputData(polydata_1);
-            //         writer->SetFileName("error1.vtk");
-            //         writer->Update();
-                    
-            //         writer->SetInputData(polydata_2);
-            //         writer->SetFileName("error2.vtk");
-            //         writer->Update();
-                    
-            //         throw runtime_error("Cell::cellDivision: Something went wrong when dividing the cell... points in the boundary of the cleavage plane and the remaining part of the cell do not coincide!");
-            //     }
-            //     else
-            //     {
-            //         loc->SetDataSet(polydata_2);
-            //         loc->BuildLocator();
-                    
-            //         for(int i = 0; i < polydata_b->GetPoints()->GetNumberOfPoints(); i++)
-            //         {
-            //             double x_i[3];
-            //             polydata_b->GetPoints()->GetPoint(i, x_i );
-            //             int j = loc->FindClosestPoint(x_i);
-
-            //             polydata_2->GetPoints()->SetPoint(j, x_i);
-            //         }
-            //     }
-            // }
             
             //Append the two meshes
             vtkSmartPointer<vtkAppendPolyData> appendFilter = vtkSmartPointer<vtkAppendPolyData>::New();
@@ -458,9 +414,36 @@ namespace ias
             vtkClean->SetInputConnection(appendFilter->GetOutputPort());
             vtkClean->Update();
             vtkSmartPointer<vtkPolyData> polydata_f = vtkClean->GetOutput();
-            removePoints3Neighbours(polydata_f);
 
-                        
+
+            vtkSmartPointer<vtkFillHolesFilter> fillHoles = vtkSmartPointer<vtkFillHolesFilter>::New();
+            fillHoles->SetInputData(polydata_f);
+            fillHoles->Update();
+            polydata_f = fillHoles->GetOutput();
+
+            edges = vtkSmartPointer<vtkFeatureEdges>::New();
+            edges->SetInputData(polydata_f);
+            edges->BoundaryEdgesOn();
+            edges->FeatureEdgesOff();
+            edges->NonManifoldEdgesOn();
+            edges->ManifoldEdgesOff();
+            edges->Update();
+            if(edges->GetOutput()->GetNumberOfLines()>0)
+            {
+                cout << "HERE --------------------------------------------------" << endl;
+                throw runtime_error("Cell::cellDivision: Non-manifold edges found!");
+            }
+
+            cout << "LLEGO AQUI 2" << endl;
+
+            removePoints3Neighbours(polydata_f);
+            
+            vtkSmartPointer<vtkPolyDataWriter> writer = vtkSmartPointer<vtkPolyDataWriter>::New();
+            writer->SetInputData(polydata_f);
+            writer->SetFileName("polydata_f.vtk");
+            writer->Update();
+            
+            cout << "normalGenerator" << endl;
             vtkSmartPointer<vtkPolyDataNormals> normalGenerator = vtkSmartPointer<vtkPolyDataNormals>::New();
             normalGenerator->SetInputData(polydata_f);
             normalGenerator->ComputePointNormalsOff();
@@ -470,13 +453,25 @@ namespace ias
             normalGenerator->SetFeatureAngle(180.0);
             normalGenerator->Update();
 
+            cout << "vtkClean" << endl;
             vtkClean->SetInputConnection(normalGenerator->GetOutputPort());
             vtkClean->Update();
+
 
             polydata_f = vtkSmartPointer<vtkPolyData>(vtkClean->GetOutput());
                     
             if(_bfType==BasisFunctionType::LoopSubdivision)
             {
+                vtkSmartPointer<vtkPolyDataWriter> writer = vtkSmartPointer<vtkPolyDataWriter>::New();
+                writer->SetInputData(polydata_f);
+                writer->SetFileName("polydata_f.vtk");
+                writer->Update();
+                writer = vtkSmartPointer<vtkPolyDataWriter>::New();
+                writer->SetInputData(polydata_1);
+                writer->SetFileName("polydata_1.vtk");
+                writer->Update();
+
+                cout << "ENTRO?" << endl;
                 vtkSmartPointer<vtkPolyDataAlgorithm> subdivisionFilter = vtkSmartPointer<vtkLinearSubdivisionFilter>::New();
                 subdivisionFilter->SetInputData(polydata_f);
                 dynamic_cast<vtkLinearSubdivisionFilter *> (subdivisionFilter.GetPointer())->SetNumberOfSubdivisions(1);
@@ -521,37 +516,78 @@ namespace ias
                 polydata_f->SetPoints(points);
             }
             
-            if(n==-1)
+            cout << "LLEGO AQUI 3" << polydata_f->GetPoints()->GetNumberOfPoints() << " " << polydata_f->GetPolys()->GetNumberOfCells() << endl;
+            if(n==1)
             {
                 int nPts = polydata_f->GetPoints()->GetNumberOfPoints();
                 int nElem = polydata_f->GetPolys()->GetNumberOfCells();
                 
-                _connec.resize(nElem,3);
+                mother->_connec.resize(nElem,3);
                 for(int i =0; i < nElem; i++)
                 {
-                    auto c = _connec(i,all);
+                    auto c = mother->_connec(i,all);
                     vtkSmartPointer<vtkIdList> element = vtkSmartPointer<vtkIdList>::New();;
                     polydata_f->GetPolys()->GetNextCell(element);
                     
-                    //Check number of Ids is 3
                     if(element->GetNumberOfIds() != 3)
-                        throw runtime_error("Cell::cellDivision: The output mesh has elements different from triangles! (nIds="+to_string(element->GetNumberOfIds())+")");
+                        throw runtime_error("Cell::cellDivision: The output mesh has elements different from triangles!");
                                 
                     for(int k = 0; k < element->GetNumberOfIds(); k++)
                         c(k) = element->GetId(k);
                 }
-
-                _nodeFields.resize(nPts,3);
+                
+                mother->_nodeFields.resize(nPts,3);
                 for(int i = 0; i < nPts; i++)
                 {
                     array<double,3> x;
                     polydata_f->GetPoints()->GetPoint(i, x.data() );
-                    _nodeFields(i,0) = x[0];
-                    _nodeFields(i,1) = x[1];
-                    _nodeFields(i,2) = x[2];
+                    mother->_nodeFields(i,0) = x[0];
+                    mother->_nodeFields(i,1) = x[1];
+                    mother->_nodeFields(i,2) = x[2];
                 }
                 
-                Update();
+                mother->_bfType = _bfType;
+                mother->_nodeFieldNames = _nodeFieldNames;
+                mother->_cellFieldNames = _cellFieldNames;
+
+                cout << "UPDATE DAUGHTER" << endl;
+
+                mother->Update();
+
+                mother->_cellFields = _cellFields;
+
+                // int nPts = polydata_f->GetPoints()->GetNumberOfPoints();
+                // int nElem = polydata_f->GetPolys()->GetNumberOfCells();
+                
+                // _connec.resize(nElem,3);
+                // for(int i =0; i < nElem; i++)
+                // {
+                //     auto c = _connec(i,all);
+                //     vtkSmartPointer<vtkIdList> element = vtkSmartPointer<vtkIdList>::New();;
+                //     polydata_f->GetPolys()->GetNextCell(element);
+                    
+                //     //Check number of Ids is 3
+                //     if(element->GetNumberOfIds() != 3)
+                //         throw runtime_error("Cell::cellDivision: The output mesh has elements different from triangles! (nIds="+to_string(element->GetNumberOfIds())+")");
+                                
+                //     for(int k = 0; k < element->GetNumberOfIds(); k++)
+                //         c(k) = element->GetId(k);
+                // }
+
+                // _nodeFields.resize(nPts,3);
+                // for(int i = 0; i < nPts; i++)
+                // {
+                //     array<double,3> x;
+                //     polydata_f->GetPoints()->GetPoint(i, x.data() );
+                //     _nodeFields(i,0) = x[0];
+                //     _nodeFields(i,1) = x[1];
+                //     _nodeFields(i,2) = x[2];
+                // }
+                
+                // cout << "UPDATE MOTHER" << endl;
+                // Update();
+                // cout << "FINISHED UPDATE MOTHER" << endl;
+
             }
             else
             {
@@ -586,12 +622,21 @@ namespace ias
                 daughter->_nodeFieldNames = _nodeFieldNames;
                 daughter->_cellFieldNames = _cellFieldNames;
 
+                cout << "UPDATE DAUGHTER" << endl;
+
                 daughter->Update();
 
                 daughter->_cellFields = _cellFields;
             }
         }
-    
+        cout << "SALGO" << endl;
+
+        _nodeFields.resize(mother->_nodeFields.shape()[0], mother->_nodeFields.shape()[1]);
+        _nodeFields = mother->_nodeFields;
+        _connec.resize(mother->_connec.shape()[0], mother->_connec.shape()[1]);
+        _connec = mother->_connec;
+        _bfs = mother->_bfs;
+
         return daughter;
 
     }

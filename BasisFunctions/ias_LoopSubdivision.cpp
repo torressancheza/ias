@@ -74,6 +74,9 @@ namespace ias
                 
                 if(j == jlast)
                     finished = true;
+
+                if(j == jprev)
+                    throw runtime_error("LoopSubdivision::LoopSubdivision: Cannot close the loop of neighbours of a node. The mesh is not a closed surface.");
             }
             nbors_n.push_back(jlast);
             adjyNN.emplace_back(nbors_n);
