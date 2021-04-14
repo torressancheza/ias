@@ -66,7 +66,7 @@ namespace ias
         vector<array<int,3>> cellsToAdd;
         vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
 
-        cout << "AQUI 0 " << endl;
+        // cout << "AQUI 0 " << endl;
         for(int i = 0; i < polydata->GetNumberOfPoints(); i++)
         {
             vtkSmartPointer<vtkIdList> cellIdList = vtkSmartPointer<vtkIdList>::New();
@@ -110,7 +110,7 @@ namespace ias
             }
         }
 
-        cout << "AQUI 1 " << endl;
+        // cout << "AQUI 1 " << endl;
         vtkSmartPointer<vtkCellArray> cells = vtkSmartPointer<vtkCellArray>::New();
         for(int e = 0; e < polydata->GetNumberOfCells(); e++)
         {
@@ -125,7 +125,7 @@ namespace ias
                 cells->InsertNextCell({newPointLabels[i1], newPointLabels[i2], newPointLabels[i3]});
             }
         }
-        cout << "AQUI 2 " << endl;
+        // cout << "AQUI 2 " << endl;
 
         for(auto& c: cellsToAdd)
         {
@@ -135,7 +135,7 @@ namespace ias
         polydata = vtkSmartPointer<vtkPolyData>::New();
         polydata->SetPoints(points);
         polydata->SetPolys(cells);
-        cout << "SALGO" << endl;
+        // cout << "SALGO" << endl;
     }
 
     Teuchos::RCP<Cell> Cell::cellDivision(double sep, double el_area)
@@ -289,7 +289,7 @@ namespace ias
             
             polydata_2->BuildLinks();
 
-            cout << "LLEGO AQUI 1" << endl;
+            // cout << "LLEGO AQUI 1" << endl;
 
             //Check that boundaries match with each other
             if(polydata_b->GetPoints()->GetNumberOfPoints()!=polydata_b2->GetPoints()->GetNumberOfPoints())
@@ -429,12 +429,9 @@ namespace ias
             edges->ManifoldEdgesOff();
             edges->Update();
             if(edges->GetOutput()->GetNumberOfLines()>0)
-            {
-                cout << "HERE --------------------------------------------------" << endl;
                 throw runtime_error("Cell::cellDivision: Non-manifold edges found!");
-            }
 
-            cout << "LLEGO AQUI 2" << endl;
+            // cout << "LLEGO AQUI 2" << endl;
 
             removePoints3Neighbours(polydata_f);
             
@@ -443,7 +440,7 @@ namespace ias
             writer->SetFileName("polydata_f.vtk");
             writer->Update();
             
-            cout << "normalGenerator" << endl;
+            // cout << "normalGenerator" << endl;
             vtkSmartPointer<vtkPolyDataNormals> normalGenerator = vtkSmartPointer<vtkPolyDataNormals>::New();
             normalGenerator->SetInputData(polydata_f);
             normalGenerator->ComputePointNormalsOff();
@@ -453,7 +450,7 @@ namespace ias
             normalGenerator->SetFeatureAngle(180.0);
             normalGenerator->Update();
 
-            cout << "vtkClean" << endl;
+            // cout << "vtkClean" << endl;
             vtkClean->SetInputConnection(normalGenerator->GetOutputPort());
             vtkClean->Update();
 
@@ -471,7 +468,7 @@ namespace ias
                 writer->SetFileName("polydata_1.vtk");
                 writer->Update();
 
-                cout << "ENTRO?" << endl;
+                // cout << "ENTRO?" << endl;
                 vtkSmartPointer<vtkPolyDataAlgorithm> subdivisionFilter = vtkSmartPointer<vtkLinearSubdivisionFilter>::New();
                 subdivisionFilter->SetInputData(polydata_f);
                 dynamic_cast<vtkLinearSubdivisionFilter *> (subdivisionFilter.GetPointer())->SetNumberOfSubdivisions(1);
@@ -516,7 +513,7 @@ namespace ias
                 polydata_f->SetPoints(points);
             }
             
-            cout << "LLEGO AQUI 3" << polydata_f->GetPoints()->GetNumberOfPoints() << " " << polydata_f->GetPolys()->GetNumberOfCells() << endl;
+            // cout << "LLEGO AQUI 3" << polydata_f->GetPoints()->GetNumberOfPoints() << " " << polydata_f->GetPolys()->GetNumberOfCells() << endl;
             if(n==1)
             {
                 int nPts = polydata_f->GetPoints()->GetNumberOfPoints();
@@ -550,7 +547,7 @@ namespace ias
                 mother->_nodeFieldNames = _nodeFieldNames;
                 mother->_cellFieldNames = _cellFieldNames;
 
-                cout << "UPDATE DAUGHTER" << endl;
+                // cout << "UPDATE DAUGHTER" << endl;
 
                 mother->Update();
 
@@ -622,14 +619,14 @@ namespace ias
                 daughter->_nodeFieldNames = _nodeFieldNames;
                 daughter->_cellFieldNames = _cellFieldNames;
 
-                cout << "UPDATE DAUGHTER" << endl;
+                // cout << "UPDATE DAUGHTER" << endl;
 
                 daughter->Update();
 
                 daughter->_cellFields = _cellFields;
             }
         }
-        cout << "SALGO" << endl;
+        // cout << "SALGO" << endl;
 
         _nodeFields.resize(mother->_nodeFields.shape()[0], mother->_nodeFields.shape()[1]);
         _nodeFields = mother->_nodeFields;
