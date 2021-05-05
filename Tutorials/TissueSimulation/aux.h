@@ -21,6 +21,7 @@
 
 void internal(Teuchos::RCP<ias::SingleIntegralStr> fill);
 void interaction(Teuchos::RCP<ias::DoubleIntegralStr> fill);
+
 void eulerianUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill);
 void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill);
 

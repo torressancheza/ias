@@ -56,7 +56,8 @@ namespace ias
         std::map<std::string,int> _mapCellIntegralNames; ///<Map name to field number for nodal DOFs
         std::map<std::string,int> _mapTissIntegralNames; ///<Map name to field number for global DOFs
         
-        
+        std::vector<void *> userAuxiliaryObjects;
+
         int idxNodeField(std::string field)
         {    return _mapNodeFieldNames[field];    }
         int idxCellField(std::string field)

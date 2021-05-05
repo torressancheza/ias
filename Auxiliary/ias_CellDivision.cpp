@@ -49,12 +49,13 @@
 #include "ias_LinearElements.h"
 #include "ias_LoopSubdivision.h"
 #include "ias_Cell.h"
+#include "ias_Tissue.h"
 
 
 namespace ias
 {
 
-    void removePoints3Neighbours(vtkSmartPointer<vtkPolyData> polydata)
+    void Cell::_removePoints3Neighbours(vtkSmartPointer<vtkPolyData> polydata)
     {
         using namespace std;
 
@@ -433,7 +434,7 @@ namespace ias
 
             // cout << "LLEGO AQUI 2" << endl;
 
-            removePoints3Neighbours(polydata_f);
+            _removePoints3Neighbours(polydata_f);
             
             vtkSmartPointer<vtkPolyDataWriter> writer = vtkSmartPointer<vtkPolyDataWriter>::New();
             writer->SetInputData(polydata_f);
@@ -636,6 +637,63 @@ namespace ias
 
         return daughter;
 
+    }
+
+
+    void Tissue::cellDivision(std::vector<int> cellIds, double sep, double elArea)
+    {
+        using namespace std;
+        using Teuchos::RCP;
+        constexpr size_t max_tries=10;
+        
+        size_t maxCellId = _checkCellIds();
+
+        int loc_nNewCells{};
+        for(auto c: _cells)
+        {
+            if(find(cellIds.begin(), cellIds.end(),c->getCellField("cellId")) != cellIds.end())
+                loc_nNewCells+=2;
+        }
+        
+        vector<int> nNewCells(_nParts);
+        MPI_Allgather(&loc_nNewCells, 1, MPI_INT, nNewCells.data(), 1, MPI_INT, _comm);
+        
+        int loc_offset{};
+        for(int i = 0; i < _myPart; i++)
+            loc_offset += nNewCells[i];
+        
+
+        int loc_nCells = _cells.size();
+        // for(auto c: _cells)
+        for(int i = 0; i < loc_nCells; i++)
+        {
+            auto c = _cells[i];
+
+            if(find(cellIds.begin(), cellIds.end(),c->getCellField("cellId")) != cellIds.end())
+            {
+                RCP<Cell> newCell = Teuchos::null;
+                size_t ntries{};
+                while(true)
+                {
+                    try
+                    {
+                        newCell = c->cellDivision(sep, elArea);
+                        break;
+                    }
+                    catch (runtime_error err)
+                    {
+                        ntries++;
+                        if(ntries > max_tries)
+                            throw err;
+                    }
+                }
+                c->getCellField("cellId") = maxCellId+1+loc_offset+2*i+0;
+                newCell->getCellField("cellId") = maxCellId+1+loc_offset+2*i+1;
+                _cells.push_back(newCell);
+            }
+        }
+        
+        Update();
     }
 }
 

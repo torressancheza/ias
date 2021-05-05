@@ -15,7 +15,6 @@
 
 #include "ias_Integration.h"
 #include "ias_BasicStructures.h"
-
 namespace ias
 {
 
@@ -193,6 +192,8 @@ namespace ias
                 singIntStr->_tissIntegralNames = _tissIntegralNames;
                 singIntStr->_mapCellIntegralNames = _mapCellIntegralNames;
                 singIntStr->_mapTissIntegralNames = _mapTissIntegralNames;
+
+                singIntStr->userAuxiliaryObjects = userAuxiliaryObjects;
 
                 tensor<double,1> loc_tissIntegrals(_tissIntegralIdx.size());
                 tensor<double,1> cellIntegrals(_cellIntegralIdx.size());

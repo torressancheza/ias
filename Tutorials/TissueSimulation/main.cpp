@@ -132,6 +132,7 @@ int main(int argc, char **argv)
         tissueGen->addCellFields({"A","X","Y","Z"});
         tissueGen->addCellFields({"A0","X0","Y0","Z0"});
         tissueGen->addCellFields({"Ai"});
+        tissueGen->addCellFields({"Ec", "Eh", "Ei"});
         tissueGen->addCellFields({"AR"});
 
         tissueGen->addCellFields({"intEL","intCL","intSt","tension","kappa","viscosity","frictiont","frictionn"});
@@ -150,6 +151,7 @@ int main(int argc, char **argv)
         tissue->getTissField("time") = 0.0;
         tissue->getTissField("deltat") = deltat;
         
+
         for(auto cell: tissue->getLocalCells())
         {
             cell->getCellField("intEL") = intEL;
@@ -186,6 +188,7 @@ int main(int argc, char **argv)
     tissue->saveVTK("Cell","_t"+to_string(1));
 
 
+    //FIXME: create a class for this so that the user doesn't need to see this
     vector<RCP<Tissue>> serialTissues;
     for(auto cell: tissue->getLocalCells())
     {
@@ -237,12 +240,14 @@ int main(int argc, char **argv)
     vector<RCP<Integration>> eulerianIntegrations;
     vector<RCP<solvers::TrilinosAztecOO>> eulerianLinearSolvers;
     vector<RCP<solvers::NewtonRaphson>> eulerianNewtonRaphsons;
+
     for(auto serialTissue: serialTissues)
     {
         RCP<Integration> eulerianIntegration = rcp(new Integration);
         eulerianIntegration->setTissue(serialTissue);
         eulerianIntegration->setNodeDOFs({"x","y","z"});
-        eulerianIntegration->setCellDOFs({"Paux"});
+        // eulerianIntegration->setCellDOFs({"Paux"});
+        eulerianIntegration->setCellDOFs({});
         if(updateMethod.compare("eulerian")==0)
             eulerianIntegration->setSingleIntegrand(eulerianUpdate);
         else

@@ -200,11 +200,23 @@ namespace ias
         vtkSmartPointer<vtkCellArray> cells = vtkSmartPointer<vtkCellArray>::New();
         for(int i =0; i < getNumberOfElements(); i++)
         {
-            tensor<int,1> c = _connec(i,all);
             vtkSmartPointer<vtkIdList> element =vtkSmartPointer<vtkIdList>::New();
-            
-            for(int k = 0; k < 3; k++)
-                element->InsertNextId(c(k));
+
+            if(_bfType==BasisFunctionType::LoopSubdivision)
+            {
+                int eNN = _bfs->getNumberOfNeighbours(i);
+                int*  adjEN = _bfs->getNeighbours(i);
+                element->InsertNextId(adjEN[0]);
+                element->InsertNextId(adjEN[1]);
+                element->InsertNextId(adjEN[eNN-6]);
+            }
+            else
+            {
+                tensor<int,1> c = _connec(i,all);
+                
+                for(int k = 0; k < 3; k++)
+                    element->InsertNextId(c(k));
+            }
             
             cells->InsertNextCell(element);
         }

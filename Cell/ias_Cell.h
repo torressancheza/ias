@@ -22,6 +22,8 @@
 
 namespace ias
 {
+
+
     /*! @class Cell
      *  @brief A cell is made of a mesh, basis functions for  interpolation, and set of fields both global (such as pressure or polarity) and at the nodes (such as the nodes' positions, velocities, or some concentration)*/
     class Cell
@@ -100,6 +102,8 @@ namespace ias
             /*! @brief Get the node fields (a shallow copy is created so that the user cannot change the internal structure of the tensor)*/
             Tensor::tensor<double,2> getNodeFields()
             {    return Tensor::tensor<double,2>(_nodeFields.data(),_nodeFields.shape()[0], _nodeFields.shape()[1]);    }
+            /*! @brief Get the node fields interpolated at a given parametric coordinates of an element*/
+            Tensor::tensor<double,1> getInterpolatedNodeFields(std::vector<double> xi, int e);   
             /*! @brief Get  the fields of node n*/
             Tensor::tensor<double,1> getNodeFields(int n)
             {
@@ -156,9 +160,11 @@ namespace ias
             BasisFunctionType getBasisFunctionType() const
             {    return _bfType;    }
 
-        
             /*! @brief Get the bounding box of the cell*/
             Tensor::tensor<double,2> getBoundingBox(double eps = 0.0);
+
+            /*! @brief Get a copy*/
+            Teuchos::RCP<Cell> getCopy();
 
             /*! @brief Get list of elements in the box*/
             std::vector<int> getElementsInBox(Tensor::tensor<double,2> box);
@@ -184,6 +190,8 @@ namespace ias
         
             /** @name Mesh modifiers
             *  @{ */
+            /*! @brief Compute the mesh quality*/
+            double getMeshQuality();
             /*! @brief Create a new mesh to reduce element distortion */
             void remesh(double tArea = 0.05);
             /*! @brief Divide the cell creating two daughters separated by a distance sep. First daughter replaces the cell, the other daughter is given as an output.  */
@@ -205,9 +213,14 @@ namespace ias
             std::map<std::string,int> _mapNodeFieldNames; ///<Map name to field number for nodal fields
             std::map<std::string,int> _mapCellFieldNames; ///<Map name to field number for cell fields
 
+            void _removePoints3Neighbours(vtkSmartPointer<vtkPolyData> polydata);
+
         friend class Tissue;
         friend class TissueGen;
         friend class Integration;
     };
+
+    void mapFields(Teuchos::RCP<Cell> cell1, Teuchos::RCP<Cell> cell2);
+
 }
 #endif //_Cell_h

@@ -17,9 +17,22 @@
 #include "SurfaceRemeshing.h"
 
 #include "ias_Cell.h"
+#include <vtkMeshQuality.h>
 
 namespace ias
 {
+
+    double Cell::getMeshQuality()
+    {
+        auto polydata = getPolyData();
+        vtkSmartPointer<vtkMeshQuality> meshQuality = vtkSmartPointer<vtkMeshQuality>::New();
+        meshQuality->SetTriangleQualityMeasureToShapeAndSize();
+        meshQuality->SetInputData(polydata);
+        meshQuality->Update();
+        
+        return meshQuality->GetOutput()->GetFieldData()->GetArray("Mesh Triangle Quality")->GetTuple(0)[0];
+    }
+
     void Cell::remesh(double tArea)
     {
         //FIXME: add more options anc clean it!
@@ -29,73 +42,77 @@ namespace ias
         
         if (_connec.shape()[1] != 3)
             throw runtime_error("Cell::remesh: Only programmed for triangular meshes at the time");
-               
+
+        Teuchos::RCP<Cell> oldCell = getCopy();
+
+        vtkSmartPointer<vtkPolyData> polydata = getPolyData();
+
         if(_bfType == BasisFunctionType::LoopSubdivision)
             tArea *= 4.0;
         
-        vtkSmartPointer<vtkPolyData> polydata = getPolyData();
+        // vtkSmartPointer<vtkCurvatures> meanCurva = vtkSmartPointer<vtkCurvatures>::New();
+        // meanCurva->SetInputData(polydata);
+        // meanCurva->SetCurvatureTypeToMean();
+        // meanCurva->Update();
         
-        vtkSmartPointer<vtkCurvatures> meanCurva = vtkSmartPointer<vtkCurvatures>::New();
-        meanCurva->SetInputData(polydata);
-        meanCurva->SetCurvatureTypeToMean();
-        meanCurva->Update();
-        
-        vtkSmartPointer<vtkCurvatures> gaussCurva = vtkSmartPointer<vtkCurvatures>::New();
-        gaussCurva->SetInputData(polydata);
-        gaussCurva->SetCurvatureTypeToGaussian();
-        gaussCurva->Update();
+        // vtkSmartPointer<vtkCurvatures> gaussCurva = vtkSmartPointer<vtkCurvatures>::New();
+        // gaussCurva->SetInputData(polydata);
+        // gaussCurva->SetCurvatureTypeToGaussian();
+        // gaussCurva->Update();
                 
-        vtkSmartPointer<vtkDoubleArray> targetAreaArray = vtkSmartPointer<vtkDoubleArray>::New();
-        targetAreaArray->SetNumberOfComponents(1);
-        targetAreaArray->SetNumberOfTuples(getNumberOfPoints());
-        targetAreaArray->SetName("TargetArea");
+        // vtkSmartPointer<vtkDoubleArray> targetAreaArray = vtkSmartPointer<vtkDoubleArray>::New();
+        // targetAreaArray->SetNumberOfComponents(1);
+        // targetAreaArray->SetNumberOfTuples(getNumberOfPoints());
+        // targetAreaArray->SetName("TargetArea");
         
-        double bounds[6];
-        polydata->GetBounds(bounds);
+        // double bounds[6];
+        // polydata->GetBounds(bounds);
         
-        double dx = bounds[1]-bounds[0];
-        double dy = bounds[3]-bounds[2];
-        double dz = bounds[5]-bounds[4];
-        double r = 1./3.0*(dx+dy+dz);
+        // double dx = bounds[1]-bounds[0];
+        // double dy = bounds[3]-bounds[2];
+        // double dz = bounds[5]-bounds[4];
+        // double r = 1./3.0*(dx+dy+dz);
         
-        for(int i =0; i < getNumberOfPoints(); i++) //FIXME: this should be an option
-        {
+//         for(int i =0; i < getNumberOfPoints(); i++) //FIXME: this should be an option
+//         {
 
-            double H = meanCurva->GetOutput()->GetPointData()->GetScalars()->GetTuple(i)[0];
-            double K = gaussCurva->GetOutput()->GetPointData()->GetScalars()->GetTuple(i)[0];
+//             double H = meanCurva->GetOutput()->GetPointData()->GetScalars()->GetTuple(i)[0];
+//             double K = gaussCurva->GetOutput()->GetPointData()->GetScalars()->GetTuple(i)[0];
             
-            double targetArea{};
-            if(H*H-K>0)
-            {
-                double c1 = H + sqrt(H*H-K);
-                double c2 = H - sqrt(H*H-K);
+//             double targetArea{tArea};
+//             // if(H*H-K>0)
+//             // {
+//             //     double c1 = H + sqrt(H*H-K);
+//             //     double c2 = H - sqrt(H*H-K);
                 
-                 targetArea = tArea/(r*max(c1,c2));
-            }
-            else
-                targetArea = tArea/(r*sqrt(abs(K)));
+//             //      targetArea = tArea/(r*max(c1,c2));
+//             // }
+//             // else
+//             //     targetArea = tArea/(r*sqrt(abs(K)));
 
-            targetArea = min(tArea,targetArea);
-            targetArea = max(0.5*tArea,targetArea);
+//             // targetArea = min(tArea,targetArea);
+//             // targetArea = max(0.5*tArea,targetArea);
             
-            targetAreaArray->SetTuple(i, &targetArea);
-//            x(1) = curvaturesFilter->GetPoint(i)[1];
-//            x(2) = curvaturesFilter->GetPoint(i)[2];
-        }
+//             targetAreaArray->SetTuple(i, &targetArea);
+// //            x(1) = curvaturesFilter->GetPoint(i)[1];
+// //            x(2) = curvaturesFilter->GetPoint(i)[2];
+//         }
         
-        polydata->GetPointData()->SetScalars(targetAreaArray);
+//         polydata->GetPointData()->SetScalars(targetAreaArray);
 
         
         
         vtkSmartPointer<SurfaceRemeshing> vtkRemeshing = SurfaceRemeshing::New();
         vtkRemeshing->SetInputData( polydata );
-        vtkRemeshing->SetElementSizeModeToTargetAreaArray();
-        vtkRemeshing->SetTargetAreaArrayName("TargetArea");
+        // vtkRemeshing->SetElementSizeModeToTargetAreaArray();
+        vtkRemeshing->SetElementSizeModeToTargetArea();
+        // vtkRemeshing->SetTargetAreaArrayName("TargetArea");
+        vtkRemeshing->SetTargetArea(tArea);
         vtkRemeshing->SetNumberOfIterations(10);
         vtkRemeshing->SetAspectRatioThreshold(1.1);
 //            vtkRemeshing->SetCollapseAngleThreshold(1.0);
         vtkRemeshing->SetTriangleSplitFactor(10.0);
-        vtkRemeshing->SetNumberOfConnectivityOptimizationIterations(500);
+        vtkRemeshing->SetNumberOfConnectivityOptimizationIterations(1000);
 //            vtkRemeshing->SetPreserveBoundaryEdges(true);
         vtkRemeshing->Update();
         
@@ -108,7 +125,8 @@ namespace ias
         vtkClean->Update();
 
         vtkSmartPointer<vtkPolyData>  polydata_f = vtkClean->GetOutput();
-        
+        _removePoints3Neighbours(polydata_f);
+
         if(_bfType==BasisFunctionType::LoopSubdivision)
         {
             vtkSmartPointer<vtkPolyDataAlgorithm> subdivisionFilter = vtkSmartPointer<vtkLoopSubdivisionFilter>::New();
@@ -175,6 +193,6 @@ namespace ias
         }
         
         Update();
-        //FIXME: do a least squares here for the rest of fields!
+        mapFields(Teuchos::rcp(this, false), oldCell);
     }
 }

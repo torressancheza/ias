@@ -184,6 +184,8 @@ namespace ias
         
             void setCellDOFsInInteractions(bool cellDOFsInt)
             {   _cellDOFsInt = cellDOFsInt;   }
+
+            std::vector<void *> userAuxiliaryObjects;
         
         private:
         

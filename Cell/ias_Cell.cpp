@@ -123,4 +123,39 @@ namespace ias
         
         return elems;
     }
+
+    Teuchos::RCP<Cell> Cell::getCopy()
+    {
+        Teuchos::RCP<Cell> newCell = Teuchos::rcp(new Cell);
+        newCell->_connec.resize(_connec.shape()[0], _connec.shape()[1]);
+        newCell->_connec(Tensor::all,Tensor::all) = _connec(Tensor::all,Tensor::all);
+        newCell->_bfType = _bfType;
+        newCell->_nodeFields.resize(_nodeFields.shape()[0], _nodeFields.shape()[1]);
+        newCell->_nodeFields(Tensor::all,Tensor::all) = _nodeFields(Tensor::all,Tensor::all);
+        newCell->_cellFields.resize(_cellFields.shape()[0]);
+        newCell->_cellFields(Tensor::all) = _cellFields(Tensor::all);
+        newCell->_nodeFieldNames = _nodeFieldNames;
+        newCell->_cellFieldNames = _cellFieldNames;
+        newCell->Update();
+
+        return newCell;
+    }
+
+    Tensor::tensor<double,1> Cell::getInterpolatedNodeFields(std::vector<double> xi, int e)
+    {
+        int eNN = _bfs->getNumberOfNeighbours(e);
+        int*  adjEN = _bfs->getNeighbours(e);
+        int nFields = _nodeFields.shape()[1];
+        std::vector<std::vector<double>> bfs = _bfs->computeBasisFunctions(xi, e);
+        Tensor::tensor<double,1> fields(nFields);
+        fields = 0.0;
+        double* raw = fields.data();
+        for(int i=0; i < eNN; i++)
+        {
+            for(int f=0; f < nFields; f++)
+                raw[f] += _nodeFields(adjEN[i],f) * bfs[0][i];
+        }
+        
+        return fields;
+    }      
 }

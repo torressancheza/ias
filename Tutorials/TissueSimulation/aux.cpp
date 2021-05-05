@@ -374,6 +374,9 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     double A  = globFields(fill->idxCellField("A"));
     double AR = globFields(fill->idxCellField("AR"));
 
+    ale_min_stretch *= A/AR;
+    ale_max_stretch *= A/AR;
+
     //[2.1] Geometry in the configuration at previous time-step
     tensor<double,1>      x0 = bfs * nborFields(all,range(idx_x0,idx_z0));
     tensor<double,2>     Dx0 = Dbfs.T() * nborFields(all,range(idx_x0,idx_z0));
@@ -423,10 +426,10 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     tensor<double,6> ddmetric   = 2.0 * product(dDx,dDx,{{3,3}}).transpose({0,1,3,4,2,5});
     
     tensor<double,2>& rhs_n = fill->vec_n;
-    tensor<double,1>& rhs_g = fill->vec_c;
+    // tensor<double,1>& rhs_g = fill->vec_c;
     tensor<double,4>& A_nn  = fill->mat_nn;
-    tensor<double,3>& A_ng  = fill->mat_nc;
-    tensor<double,3>& A_gn  = fill->mat_cn;
+    // tensor<double,3>& A_ng  = fill->mat_nc;
+    // tensor<double,3>& A_gn  = fill->mat_cn;
     
     //Error in normal displacements (substracting rigid body motions, which we'll add later)
     rhs_n += fill->w_sample * jac0 * (((x-x0)-(v-V)) * normal0) * outer(bfs,normal0);
@@ -475,14 +478,14 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     //[2.3] Rate-of-deformation tensor
     tensor<double,2> rodt    = 0.5 * (metric-metric0);
     tensor<double,2> rodt_CC = imetric0 * rodt * imetric0;
-    rhs_n += fill->w_sample * jac0 * product(product(dmetric,proj0,{{1,0}}),rodt_CC,{{1,0},{2,1}});
-    A_nn  += fill->w_sample * jac0 * (0.5 * product(product(dmetric,proj0,{{1,0}}),dmetric_C0C0,{{1,2},{2,3}}) + product(product(ddmetric, proj0,{{1,0}}).transpose({0,5,1,2,3,4}),rodt_CC,{{4,0},{5,1}}));
+    rhs_n += fill->w_sample * jac0 * ale_viscosity * product(product(dmetric,proj0,{{1,0}}),rodt_CC,{{1,0},{2,1}});
+    A_nn  += fill->w_sample * jac0 * ale_viscosity * (0.5 * product(product(dmetric,proj0,{{1,0}}),dmetric_C0C0,{{1,2},{2,3}}) + product(product(ddmetric, proj0,{{1,0}}).transpose({0,5,1,2,3,4}),rodt_CC,{{4,0},{5,1}}));
     
 
-    rhs_n          += fill->w_sample * pressure2 * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
-    rhs_g(0)       += deltat * (fill->w_sample * (jac * xn-jac0 * x0n0)/3.0);
+    // rhs_n          += fill->w_sample * pressure2 * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
+    // rhs_g(0)       += deltat * (fill->w_sample * (jac * xn-jac0 * x0n0)/3.0);
 
-    A_nn           += fill->w_sample * pressure2 * deltat / 3.0 * (ddjac * xn + outer(djac,outer(bfs,normal)) + outer(outer(bfs,normal),djac) + outer(djac,dnormal*x) + outer(dnormal*x,djac) + jac * outer(dnormal,bfs).transpose({0,1,3,2}) +  jac * outer(bfs,dnormal).transpose({0,3,1,2}) + jac * ddnormal * x);
-    A_ng(all,all,0) += fill->w_sample            * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
-    A_gn = A_ng.transpose({2,0,1});
+    // A_nn           += fill->w_sample * pressure2 * deltat / 3.0 * (ddjac * xn + outer(djac,outer(bfs,normal)) + outer(outer(bfs,normal),djac) + outer(djac,dnormal*x) + outer(dnormal*x,djac) + jac * outer(dnormal,bfs).transpose({0,1,3,2}) +  jac * outer(bfs,dnormal).transpose({0,3,1,2}) + jac * ddnormal * x);
+    // A_ng(all,all,0) += fill->w_sample            * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
+    // A_gn = A_ng.transpose({2,0,1});
 }
