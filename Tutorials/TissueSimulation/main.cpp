@@ -194,16 +194,18 @@ int main(int argc, char **argv)
     {
         RCP<Tissue> cellTissue = rcp(new Tissue(MPI_COMM_SELF));
         cellTissue->addCellToTissue(cell);
-        cellTissue->setTissueFieldNames({"deltat", "ale_viscosity", "ale_penalty_shear", "ale_penalty_stretch", "ale_max_shear", "ale_min_stretch", "ale_max_stretch"});
+        cellTissue->setTissueFieldNames({"deltat", "ale_viscosity", "ale_penalty_shear", "ale_penalty_stretch", "ale_max_shear", "ale_min_stretch", "ale_max_stretch", "Em", "nElem"});
         cellTissue->Update();
         cellTissue->calculateCellCellAdjacency(3.0*intCL+intEL);
         cellTissue->getTissField("deltat") = deltat;
         cellTissue->getTissField("ale_viscosity") = 1.E-2;
-        cellTissue->getTissField("ale_penalty_shear")  = 1.E-4;
-        cellTissue->getTissField("ale_penalty_stretch")  = 1.E-4;
+        cellTissue->getTissField("ale_penalty_shear")  = 1.E-1;
+        cellTissue->getTissField("ale_penalty_stretch")  = 1.E-5;
         cellTissue->getTissField("ale_max_shear") = 0.5;
         cellTissue->getTissField("ale_min_stretch") = 0.5;
         cellTissue->getTissField("ale_max_stretch") = 2.0;
+        cellTissue->getTissField("Em") = 0.0;
+        cellTissue->getTissField("nElem") = cell->getNumberOfElements();
         serialTissues.push_back(cellTissue);
     }
     
@@ -254,6 +256,7 @@ int main(int argc, char **argv)
             eulerianIntegration->setSingleIntegrand(arbLagEulUpdate);
         eulerianIntegration->setNumberOfIntegrationPointsSingleIntegral(3);
         eulerianIntegration->setNumberOfIntegrationPointsDoubleIntegral(1);
+        eulerianIntegration->setTissIntegralFields({"Em"});
         eulerianIntegration->Update();
         eulerianIntegrations.push_back(eulerianIntegration);
 
@@ -336,8 +339,9 @@ int main(int argc, char **argv)
         if(tissue->getMyPart()==0)
             cout << "Solving for velocities" << endl;
         
-        physicsNewtonRaphson->solve();
-        conv = physicsNewtonRaphson->getConvergence();
+        conv = 1;
+        // physicsNewtonRaphson->solve();
+        // conv = physicsNewtonRaphson->getConvergence();
         
         auto finish_3 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_3 = finish_3 - finish_2;
@@ -354,8 +358,33 @@ int main(int argc, char **argv)
 
             for(auto eulerianNewtonRaphson: eulerianNewtonRaphsons)
             {
-                eulerianNewtonRaphson->solve();
-                conv = eulerianNewtonRaphson->getConvergence();
+                auto tissue = eulerianNewtonRaphson->getIntegration()->getTissue();
+                auto cell = tissue->getLocalCells()[0];
+                double Em = tissue->getTissField("Em");
+                double Em0 = Em;
+                double diff0{};
+                int n{};
+                do
+                {
+                    eulerianNewtonRaphson->solve();
+                    Em0 = Em;
+                    Em = tissue->getTissField("Em");
+
+                    conv = eulerianNewtonRaphson->getConvergence();
+                    if(not conv)
+                        break;
+
+                    cell->getNodeField("x0")  = cell->getNodeField("x");
+                    cell->getNodeField("y0")  = cell->getNodeField("y");
+                    cell->getNodeField("z0")  = cell->getNodeField("z");
+
+                    if(n==0)
+                        diff0 = abs(Em-Em0);
+                    n++;
+
+                    // cout << abs(Em-Em0) << " " << diff0 << " " << abs(Em-Em0)/diff0 << endl;
+                } while(abs(Em-Em0)/diff0 > 1.E-1 and n < 10);
+
                 if(not conv)
                     break;
             }
