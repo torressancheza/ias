@@ -52,6 +52,16 @@ int main(int argc, char **argv)
     double frictiont = 1.E-1;
     double frictionn = 1.E-1;
     
+    double kConfin = 0.E3;
+    double dConfinX = 0.0;
+    double dConfinY = 0.0;
+    double dConfinZ = 1.0;
+    double tConfin  = 1.0;
+    double cConfinX = 0.0;
+    double cConfinY = 0.0;
+    double cConfinZ = 0.0;
+    double dt_tConfin = 0.0;
+
     double lifetime = 1.0;
 
     double totTime{1.E3};
@@ -79,6 +89,16 @@ int main(int argc, char **argv)
         config.readInto(       dx, "dx");
         config.readInto(       dy, "dy");
         config.readInto(       dz, "dz");
+
+        config.readInto( kConfin, "kConfin");
+        config.readInto( tConfin, "tConfin");
+        config.readInto( dConfinX, "dConfinX");
+        config.readInto( dConfinY, "dConfinY");
+        config.readInto( dConfinZ, "dConfinZ");
+        config.readInto( cConfinX, "cConfinX");
+        config.readInto( cConfinY, "cConfinY");
+        config.readInto( cConfinZ, "cConfinZ");
+        config.readInto( dt_tConfin, "dt_tConfin");
 
         config.readInto(        R, "R");
 
@@ -140,6 +160,11 @@ int main(int argc, char **argv)
         tissueGen->addTissField("time");
         tissueGen->addTissField("deltat");
 
+        tissueGen->addTissField("kConfin");
+        tissueGen->addTissField("tConfin");
+        tissueGen->addTissFields({"dConfinX", "dConfinY", "dConfinZ"});
+        tissueGen->addTissFields({"cConfinX", "cConfinY", "cConfinZ"});
+
         tissue = tissueGen->genRegularGridSpheres(nx, ny, nz, dx, dy, dz, R, nSubdiv);
         
         tissue->calculateCellCellAdjacency(3.0*intCL+intEL);
@@ -150,7 +175,14 @@ int main(int argc, char **argv)
         
         tissue->getTissField("time") = 0.0;
         tissue->getTissField("deltat") = deltat;
-        
+        tissue->getTissField("kConfin") = kConfin;
+        tissue->getTissField("tConfin") = tConfin;
+        tissue->getTissField("dConfinX") = dConfinX;
+        tissue->getTissField("dConfinY") = dConfinY;
+        tissue->getTissField("dConfinZ") = dConfinZ;
+        tissue->getTissField("cConfinX") = cConfinX;
+        tissue->getTissField("cConfinY") = cConfinY;
+        tissue->getTissField("cConfinZ") = cConfinZ;
 
         for(auto cell: tissue->getLocalCells())
         {
@@ -197,13 +229,13 @@ int main(int argc, char **argv)
         cellTissue->setTissueFieldNames({"deltat", "ale_viscosity", "ale_penalty_shear", "ale_penalty_stretch", "ale_max_shear", "ale_min_stretch", "ale_max_stretch", "Em", "nElem"});
         cellTissue->Update();
         cellTissue->calculateCellCellAdjacency(3.0*intCL+intEL);
-        cellTissue->getTissField("deltat") = deltat;
-        cellTissue->getTissField("ale_viscosity") = 1.E-2;
-        cellTissue->getTissField("ale_penalty_shear")  = 1.E-1;
+        cellTissue->getTissField("deltat") = 1.E-3;
+        cellTissue->getTissField("ale_viscosity") = 1.E-1;
+        cellTissue->getTissField("ale_penalty_shear")  = 1.E-2;
         cellTissue->getTissField("ale_penalty_stretch")  = 1.E-5;
         cellTissue->getTissField("ale_max_shear") = 0.5;
         cellTissue->getTissField("ale_min_stretch") = 0.5;
-        cellTissue->getTissField("ale_max_stretch") = 2.0;
+        cellTissue->getTissField("ale_max_stretch") = 200.0;
         cellTissue->getTissField("Em") = 0.0;
         cellTissue->getTissField("nElem") = cell->getNumberOfElements();
         serialTissues.push_back(cellTissue);
@@ -339,9 +371,8 @@ int main(int argc, char **argv)
         if(tissue->getMyPart()==0)
             cout << "Solving for velocities" << endl;
         
-        conv = 1;
-        // physicsNewtonRaphson->solve();
-        // conv = physicsNewtonRaphson->getConvergence();
+        physicsNewtonRaphson->solve();
+        conv = physicsNewtonRaphson->getConvergence();
         
         auto finish_3 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_3 = finish_3 - finish_2;
@@ -361,6 +392,7 @@ int main(int argc, char **argv)
                 auto tissue = eulerianNewtonRaphson->getIntegration()->getTissue();
                 auto cell = tissue->getLocalCells()[0];
                 double Em = tissue->getTissField("Em");
+                tissue->getTissField("deltat") = deltat;
                 double Em0 = Em;
                 double diff0{};
                 int n{};
@@ -383,7 +415,7 @@ int main(int argc, char **argv)
                     n++;
 
                     // cout << abs(Em-Em0) << " " << diff0 << " " << abs(Em-Em0)/diff0 << endl;
-                } while(abs(Em-Em0)/diff0 > 1.E-1 and n < 10);
+                } while(abs(Em-Em0)/diff0 > 1.E-1 and n < 3);
 
                 if(not conv)
                     break;
@@ -404,6 +436,7 @@ int main(int argc, char **argv)
                 
                 time += deltat;
                 tissue->getTissField("time") = time;
+                tissue->getTissField("tConfin") += dt_tConfin * deltat;
 
                 for(auto cell: tissue->getLocalCells())
                 {

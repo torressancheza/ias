@@ -38,10 +38,24 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     
     int idx_x = fill->idxNodeField("x");
     int idx_z = fill->idxNodeField("z");
+    int idx_xR = fill->idxNodeField("xR");
+    int idx_zR = fill->idxNodeField("zR");
     int idx_vx = fill->idxNodeField("vx");
     int idx_vz = fill->idxNodeField("vz");
 
+    double kConfin = tissFields(fill->idxTissField("kConfin"));
+    double tConfin = tissFields(fill->idxTissField("tConfin"));
+    tensor<double,1> dConfin = tissFields(range(fill->idxTissField("dConfinX"),fill->idxTissField("dConfinZ")));
+    tensor<double,1> cConfin = tissFields(range(fill->idxTissField("cConfinX"),fill->idxTissField("cConfinZ")));
+
     //[2] CALCULATIONS
+    tensor<double,1>       xR = bfs * nborFields(all,range(idx_xR,idx_zR));
+    tensor<double,2>      DxR = Dbfs.T() * nborFields(all,range(idx_xR,idx_zR));
+    tensor<double,1>   crossR = DxR(1,all) * antisym3D * DxR(0,all);
+    double               jacR = sqrt(crossR*crossR);
+    tensor<double,1>  normalR = crossR/jacR;
+    double               xRnR = xR * normalR;
+
     //[2.1] Geometry in the configuration at previous time-step
     tensor<double,1>       x0 = bfs * nborFields(all,range(idx_x,idx_z));
     tensor<double,2>      Dx0 = Dbfs.T() * nborFields(all,range(idx_x,idx_z));
@@ -126,7 +140,7 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
 
     // [3.4] Volume constraint
     rhs_n          += fill->w_sample * pressure * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
-    rhs_g(0)       += deltat * (fill->w_sample * (jac * xn-jac0 * x0n0)/3.0);
+    rhs_g(0)       += deltat * (fill->w_sample * (jac * xn-jacR * xRnR)/3.0);
         
     A_nn           += fill->w_sample * pressure * deltat / 3.0 * (ddjac * xn + outer(djac,outer(bfs,normal)) + outer(outer(bfs,normal),djac) + outer(djac,dnormal*x) + outer(dnormal*x,djac) + jac * outer(dnormal,bfs).transpose({0,1,3,2}) +  jac * outer(bfs,dnormal).transpose({0,3,1,2}) + jac * ddnormal * x);
     A_ng(all,all,0) += fill->w_sample            * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
@@ -153,6 +167,18 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
         rhs_n += fill->w_sample *  kappa * H * (jac * dH + 0.5 * H * djac);
         A_nn  += fill->w_sample *  kappa * (jac * (H * ddH + outer(dH,dH)) + H * outer(dH,djac) + H * outer(djac,dH) + 0.5 * H * H * ddjac);
     }
+
+
+
+    //Confinement
+    double cPot = ConfinementPotential(kConfin, cConfin, dConfin, tConfin, x);
+    tensor<double,1> dx_cPot = dConfinementPotential(kConfin, cConfin, dConfin, tConfin, x);
+    tensor<double,2> ddx_cPot = ddConfinementPotential(kConfin, cConfin, dConfin, tConfin, x);
+    tensor<double,2> dcPot = outer(bfs, dx_cPot);
+
+    rhs_n += fill->w_sample * (jac * dcPot + cPot * djac);
+    A_nn  += fill->w_sample * (jac * outer(bfs, outer(bfs, ddx_cPot)).transpose({0,2,1,3}) + outer(dcPot, djac) + outer(djac, dcPot) + cPot * ddjac);
+
 
 }
 
@@ -352,12 +378,12 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
                               {{0.0,0.0},{0.0,1.0}},
                               {{0.0,1.0},{1.0,0.0}}};
     
-    double deltat    = tissFields(fill->idxTissField("deltat"));
+    double deltat    = min(tissFields(fill->idxTissField("deltat")), 1.E-2);
     double pressure2 = globFields(fill->idxCellField("Paux"));
 
     double ale_viscosity = tissFields(fill->idxTissField("ale_viscosity"));
-    double ale_penalty_shear = tissFields(fill->idxTissField("ale_penalty_shear"));
-    double ale_penalty_stretch = tissFields(fill->idxTissField("ale_penalty_stretch"));
+    double ale_penalty_shear = tissFields(fill->idxTissField("ale_penalty_shear")) * deltat;
+    double ale_penalty_stretch = tissFields(fill->idxTissField("ale_penalty_stretch")) * deltat;
     double ale_max_shear = tissFields(fill->idxTissField("ale_max_shear"));
     double ale_min_stretch = tissFields(fill->idxTissField("ale_min_stretch"));
     double ale_max_stretch = tissFields(fill->idxTissField("ale_max_stretch"));
@@ -433,14 +459,12 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     // tensor<double,3>& A_gn  = fill->mat_cn;
     
     //Error in normal displacements (substracting rigid body motions, which we'll add later)
-    rhs_n += fill->w_sample /** jac0*/ * (((x-x0)-(v-V)) * normal0) * outer(bfs,normal0);
-    A_nn  += fill->w_sample /** jac0*/ * outer(outer(bfs,normal0),outer(bfs,normal0));
-    
-
+    rhs_n += fill->w_sample * jac0 * (((x-x0)-(v-V)) * normal0) * outer(bfs,normal0);
+    A_nn  += fill->w_sample * jac0 * outer(outer(bfs,normal0),outer(bfs,normal0));
     
     // tensor<double,2>     DxR = Dbfs.T() * nborFields(all,range(idx_xR,idx_zR));
     tensor<double,2>     DxR = {{1.0, 0.0}, {cos(M_PI/3.0), sin(M_PI/3.0)}};
-    DxR *= sqrt(sqrt(3)/4*A/nElem);// / sqrt(c1_0*c1_0+c2_0*c2_0);
+    DxR *= sqrt(4.0/sqrt(3)*A/nElem);// / sqrt(c1_0*c1_0+c2_0*c2_0);
     tensor<double,2> metricR = DxR * DxR.T();
     double jacR = sqrt(metricR.det());
     tensor<double,2> imetricR = metricR.inv();
@@ -448,7 +472,6 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     double I1 = product(imetricR, metric,{{0,0},{1,1}});
     double shear = 1.0-4.0*(J*J)/(I1*I1) > 0 ? sqrt(1.0-4.0*(J*J)/(I1*I1)) : 0.0;
 
-    // cout << J << endl;
     double energy{};
     double shear_factor_rhs{0.0};
     double shear_factor_matrix{0.0};
@@ -461,10 +484,10 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
         
         shear_factor_rhs = (shear-ale_max_shear) * (shear-ale_max_shear) / 3.0;
         shear_factor_matrix = 2.0 * (shear-ale_max_shear) / 3.0;
-        energy += fill->w_sample * ale_penalty_shear /** jacR*/ * (shear-ale_max_shear) * (shear-ale_max_shear) * (shear-ale_max_shear);
-        rhs_n += fill->w_sample * ale_penalty_shear /** jacR*/ * shear_factor_rhs * (dshear * proj0); 
-        A_nn  += fill->w_sample * ale_penalty_shear /** jacR*/ * shear_factor_rhs * product(ddshear, proj0,{{1,0}}).transpose({0,3,1,2});
-        A_nn  += fill->w_sample * ale_penalty_shear /** jacR*/ * shear_factor_matrix * outer(dshear * proj0,dshear);
+        energy += fill->w_sample * ale_penalty_shear * jacR * (shear-ale_max_shear) * (shear-ale_max_shear) * (shear-ale_max_shear);
+        rhs_n += fill->w_sample * ale_penalty_shear * jacR * shear_factor_rhs * (dshear * proj0); 
+        A_nn  += fill->w_sample * ale_penalty_shear * jacR * shear_factor_rhs * product(ddshear, proj0,{{1,0}}).transpose({0,3,1,2});
+        A_nn  += fill->w_sample * ale_penalty_shear * jacR * shear_factor_matrix * outer(dshear * proj0,dshear);
     }
 
     double jac_factor_rhs{0.0};
@@ -479,17 +502,17 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
         jac_factor_rhs = (J-ale_max_stretch) * (J-ale_max_stretch) / 3.0;
         jac_factor_matrix = 2.0 * (J-ale_max_stretch) / 3.0;
     }
-    energy += fill->w_sample * ale_penalty_stretch * (J-ale_max_stretch) * (J-ale_max_stretch) * (J-ale_max_stretch);
+    energy += fill->w_sample * jacR * ale_penalty_stretch * (J-ale_max_stretch) * (J-ale_max_stretch) * (J-ale_max_stretch);
 
-    rhs_n += fill->w_sample * ale_penalty_stretch /** jacR*/ * jac_factor_rhs * (djac * proj0);
-    A_nn  += fill->w_sample * ale_penalty_stretch /** jacR*/ * jac_factor_rhs * product(ddjac, proj0, {{1,0}}).transpose({0,3,1,2});
-    A_nn  += fill->w_sample * ale_penalty_stretch /** jacR*/ * jac_factor_matrix * outer((djac* proj0)/jacR,djac);
+    rhs_n += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_rhs * (djac * proj0);
+    A_nn  += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_rhs * product(ddjac, proj0, {{1,0}}).transpose({0,3,1,2});
+    A_nn  += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_matrix * outer((djac* proj0)/jacR,djac);
 
     //[2.3] Rate-of-deformation tensor
     tensor<double,2> rodt    = 0.5 * (metric-metric0);
     tensor<double,2> rodt_CC = imetric0 * rodt * imetric0;
-    rhs_n += fill->w_sample /** jacR*/ * ale_viscosity * product(product(dmetric,proj0,{{1,0}}),rodt_CC,{{1,0},{2,1}});
-    A_nn  += fill->w_sample /** jacR*/ * ale_viscosity * (0.5 * product(product(dmetric,proj0,{{1,0}}),dmetric_C0C0,{{1,2},{2,3}}) + product(product(ddmetric, proj0,{{1,0}}).transpose({0,5,1,2,3,4}),rodt_CC,{{4,0},{5,1}}));
+    rhs_n += fill->w_sample * jac0 * ale_viscosity * product(product(dmetric,proj0,{{1,0}}),rodt_CC,{{1,0},{2,1}});
+    A_nn  += fill->w_sample * jac0 * ale_viscosity * (0.5 * product(product(dmetric,proj0,{{1,0}}),dmetric_C0C0,{{1,2},{2,3}}) + product(product(ddmetric, proj0,{{1,0}}).transpose({0,5,1,2,3,4}),rodt_CC,{{4,0},{5,1}}));
 
     fill->tissIntegrals(fill->idxTissIntegral("Em")) += energy;
 

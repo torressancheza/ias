@@ -104,4 +104,64 @@ inline double ddModMorsePotential(double D, double r0, double w, double rc1, dou
     return ddMorsePotential(D, r0, w, r) * SmoothStep(rc1, rc2, r) + 2.0 * dMorsePotential(D, r0, w, r) * dSmoothStep(rc1, rc2, r) + MorsePotential(D, r0, w, r) * ddSmoothStep(rc1, rc2, r);
 }
 
+inline double ConfinementPotential(double k, Tensor::tensor<double,1>& centre, Tensor::tensor<double,1>& direction, double h, Tensor::tensor<double,1>& x)
+{
+    double z = (x-centre)*direction;
+
+    double pot{};
+    if(z > 0.5 * h)
+    {
+        double aux = (z-0.5*h);
+        pot = k/3.0 * aux * aux * aux;
+    }
+    else if(z < -0.5 * h)
+    {
+        double aux = z+0.5*h;
+        pot = -k/3.0 * aux * aux * aux;
+    }
+
+    return pot;
+}
+
+inline Tensor::tensor<double,1> dConfinementPotential(double k, Tensor::tensor<double,1>& centre, Tensor::tensor<double,1>& direction, double h, Tensor::tensor<double,1>& x)
+{
+    double z = (x-centre)*direction;
+
+    Tensor::tensor<double,1> dpot = {0.0, 0.0, 0.0};
+
+    if(z > 0.5 * h)
+    {
+        double aux = (z-0.5*h);
+        dpot = k * aux * aux * direction;
+    }
+    else if(z < -0.5 * h)
+    {
+        double aux = z+0.5*h;
+        dpot = -k * aux * aux * direction;
+    }
+
+    return dpot;
+}
+
+inline Tensor::tensor<double,2> ddConfinementPotential(double k, Tensor::tensor<double,1>& centre, Tensor::tensor<double,1>& direction, double h, Tensor::tensor<double,1>& x)
+{
+    double z = (x-centre)*direction;
+
+    Tensor::tensor<double,2> ddpot(3,3);
+
+    ddpot = 0.0;
+    if(z > 0.5 * h)
+    {
+        double aux = (z-0.5*h);
+        ddpot = 2.0 * k * aux * Tensor::outer(direction, direction);
+    }
+    else if(z < -0.5 * h)
+    {
+        double aux = z+0.5*h;
+        ddpot = -2.0 * k * aux * Tensor::outer(direction, direction);
+    }
+
+    return ddpot;
+}
+
 #endif //aux_mzg_h
