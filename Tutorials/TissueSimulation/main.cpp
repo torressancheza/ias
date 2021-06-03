@@ -211,9 +211,9 @@ int main(int argc, char **argv)
         
         for(auto cell: tissue->getLocalCells())
         {
-            cell->getNodeField("vx") *= deltat;
-            cell->getNodeField("vy") *= deltat;
-            cell->getNodeField("vz") *= deltat;
+            cell->getNodeField("vx") *= 0.0;
+            cell->getNodeField("vy") *= 0.0;
+            cell->getNodeField("vz") *= 0.0;
         }
     }
         
@@ -226,16 +226,15 @@ int main(int argc, char **argv)
     {
         RCP<Tissue> cellTissue = rcp(new Tissue(MPI_COMM_SELF));
         cellTissue->addCellToTissue(cell);
-        cellTissue->setTissueFieldNames({"deltat", "ale_viscosity", "ale_penalty_shear", "ale_penalty_stretch", "ale_max_shear", "ale_min_stretch", "ale_max_stretch", "Em", "nElem"});
+        cellTissue->setTissueFieldNames({"deltat", "ale_penalty_shear", "ale_penalty_stretch", "ale_max_shear", "ale_min_stretch", "ale_max_stretch", "Em", "nElem"});
         cellTissue->Update();
         cellTissue->calculateCellCellAdjacency(3.0*intCL+intEL);
-        cellTissue->getTissField("deltat") = 1.E-3;
-        cellTissue->getTissField("ale_viscosity") = 1.E-1;
-        cellTissue->getTissField("ale_penalty_shear")  = 1.E-2;
-        cellTissue->getTissField("ale_penalty_stretch")  = 1.E-5;
+        cellTissue->getTissField("deltat") = 1.E0;
+        cellTissue->getTissField("ale_penalty_shear")  = 1.E-3;
+        cellTissue->getTissField("ale_penalty_stretch")  = 1.E-3;
         cellTissue->getTissField("ale_max_shear") = 0.5;
         cellTissue->getTissField("ale_min_stretch") = 0.5;
-        cellTissue->getTissField("ale_max_stretch") = 200.0;
+        cellTissue->getTissField("ale_max_stretch") = 2.0;
         cellTissue->getTissField("Em") = 0.0;
         cellTissue->getTissField("nElem") = cell->getNumberOfElements();
         serialTissues.push_back(cellTissue);
@@ -280,7 +279,6 @@ int main(int argc, char **argv)
         RCP<Integration> eulerianIntegration = rcp(new Integration);
         eulerianIntegration->setTissue(serialTissue);
         eulerianIntegration->setNodeDOFs({"x","y","z"});
-        // eulerianIntegration->setCellDOFs({"Paux"});
         eulerianIntegration->setCellDOFs({});
         if(updateMethod.compare("eulerian")==0)
             eulerianIntegration->setSingleIntegrand(eulerianUpdate);
@@ -384,6 +382,17 @@ int main(int argc, char **argv)
         {
             int nIter = physicsNewtonRaphson->getNumberOfIterations();
             
+            for(auto cell: tissue->getLocalCells())
+            {
+                cell->getNodeField("x") += cell->getNodeField("vx");
+                cell->getNodeField("y") += cell->getNodeField("vy");
+                cell->getNodeField("z") += cell->getNodeField("vz");
+
+                cell->getNodeField("x0")  = cell->getNodeField("x");
+                cell->getNodeField("y0")  = cell->getNodeField("y");
+                cell->getNodeField("z0")  = cell->getNodeField("z");
+            }
+            
             if(tissue->getMyPart()==0)
                 cout << "Solving for displacement with " << updateMethod  << endl;
 
@@ -392,9 +401,7 @@ int main(int argc, char **argv)
                 auto tissue = eulerianNewtonRaphson->getIntegration()->getTissue();
                 auto cell = tissue->getLocalCells()[0];
                 double Em = tissue->getTissField("Em");
-                tissue->getTissField("deltat") = deltat;
                 double Em0 = Em;
-                double diff0{};
                 int n{};
                 do
                 {
@@ -404,18 +411,19 @@ int main(int argc, char **argv)
 
                     conv = eulerianNewtonRaphson->getConvergence();
                     if(not conv)
-                        break;
+                        tissue->getTissField("deltat") /= 2.0;
+
+                    n++;
+
+                    if(eulerianNewtonRaphson->getNumberOfIterations() <= 3 and tissue->getTissField("deltat") < 0.1)
+                        tissue->getTissField("deltat") *= 2.0;
 
                     cell->getNodeField("x0")  = cell->getNodeField("x");
                     cell->getNodeField("y0")  = cell->getNodeField("y");
                     cell->getNodeField("z0")  = cell->getNodeField("z");
 
-                    if(n==0)
-                        diff0 = abs(Em-Em0);
-                    n++;
-
-                    // cout << abs(Em-Em0) << " " << diff0 << " " << abs(Em-Em0)/diff0 << endl;
-                } while(abs(Em-Em0)/diff0 > 1.E-1 and n < 3);
+                    cout << eulerianNewtonRaphson->getNumberOfIterations() << " " << tissue->getTissField("deltat") << " " << abs(Em-Em0)/abs(Em) << endl;
+                } while(abs((Em-Em0)/Em) > 1.E-5 and n < 10);
 
                 if(not conv)
                     break;
@@ -427,12 +435,12 @@ int main(int argc, char **argv)
             {
                 if(tissue->getMyPart()==0)
                     cout << "Solved!"  << endl;
-                for(auto cell: tissue->getLocalCells())
-                {
-                    cell->getNodeField("x") += cell->getCellField("X")/cell->getCellField("A") - cell->getCellField("X0")/cell->getCellField("A0");
-                    cell->getNodeField("y") += cell->getCellField("Y")/cell->getCellField("A") - cell->getCellField("Y0")/cell->getCellField("A0");
-                    cell->getNodeField("z") += cell->getCellField("Z")/cell->getCellField("A") - cell->getCellField("Z0")/cell->getCellField("A0");
-                }
+                // for(auto cell: tissue->getLocalCells())
+                // {
+                //     cell->getNodeField("x") += cell->getCellField("X")/cell->getCellField("A") - cell->getCellField("X0")/cell->getCellField("A0");
+                //     cell->getNodeField("y") += cell->getCellField("Y")/cell->getCellField("A") - cell->getCellField("Y0")/cell->getCellField("A0");
+                //     cell->getNodeField("z") += cell->getCellField("Z")/cell->getCellField("A") - cell->getCellField("Z0")/cell->getCellField("A0");
+                // }
                 
                 time += deltat;
                 tissue->getTissField("time") = time;

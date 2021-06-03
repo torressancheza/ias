@@ -367,21 +367,16 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     tensor<double,2> Dbfs(fill->bfs[1].data(),eNN,2);
     tensor<double,2> DDbfs(fill->bfs[2].data(),eNN,3);
 
-    tensor<double,2> nborFields   = fill->nborFields;
-
-    tensor<double,1>&  globFields = fill->cellFields;
-    tensor<double,1> V = globFields(range(fill->idxCellField("X"),fill->idxCellField("Z")))/globFields(fill->idxCellField("A")) - globFields(range(fill->idxCellField("X0"),fill->idxCellField("Z0")))/globFields(fill->idxCellField("A0"));
-    
+    tensor<double,2>   nborFields = fill->nborFields;
+    tensor<double,1>&  globFields = fill->cellFields;    
     tensor<double,1>&  tissFields = fill->tissFields;
 
     tensor<double,3> voigt = {{{1.0,0.0},{0.0,0.0}},
                               {{0.0,0.0},{0.0,1.0}},
                               {{0.0,1.0},{1.0,0.0}}};
     
-    double deltat    = min(tissFields(fill->idxTissField("deltat")), 1.E-2);
-    double pressure2 = globFields(fill->idxCellField("Paux"));
+    double deltat    = tissFields(fill->idxTissField("deltat"));
 
-    double ale_viscosity = tissFields(fill->idxTissField("ale_viscosity"));
     double ale_penalty_shear = tissFields(fill->idxTissField("ale_penalty_shear")) * deltat;
     double ale_penalty_stretch = tissFields(fill->idxTissField("ale_penalty_stretch")) * deltat;
     double ale_max_shear = tissFields(fill->idxTissField("ale_max_shear"));
@@ -414,28 +409,21 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     double              x0n0 = x0*normal0;
     tensor<double,2> metric0 = Dx0 * Dx0.T();
     tensor<double,2> imetric0 = metric0.inv();
-    
-    tensor<double,2> curva0  = (DDx0 * normal0) * voigt;
-    double H0 = product(curva0,imetric0,{{0,0},{1,1}});
-    double K0 = curva0.det() * imetric0.det();
-    double c1_0 = H0 + sqrt(H0*H0-K0);
-    double c2_0 = H0 - sqrt(H0*H0-K0);
-
-    tensor<double,2> n0n0 = outer(normal0,normal0);
-    tensor<double,2> proj0 = Identity(3);
-    proj0 -= n0n0;
 
     tensor<double,1>      v = bfs * nborFields(all,range(idx_vx,idx_vz));
     
     //[2.2] Geometry in current configuration
     tensor<double,1>      x = bfs * nborFields(all,range(idx_x,idx_z));
     tensor<double,2>     Dx = Dbfs.T() * nborFields(all,range(idx_x,idx_z));
+    tensor<double,2>    DDx = DDbfs.T() * nborFields(all,range(idx_x,idx_z));
     tensor<double,1>  cross = Dx(1,all) * antisym3D * Dx(0,all);
     double             jac  = sqrt(cross*cross);
     tensor<double,1> normal = cross/jac;
-    double               xn = x * normal;
     tensor<double,2> metric = Dx * Dx.T();
-    
+    tensor<double,2> imetric = metric.inv();
+    tensor<double,2> curva  = (DDx * normal) * voigt;
+    double H = product(curva,imetric,{{0,0},{1,1}});
+
     //[2.4] First-order derivatives of geometric quantities wrt nodal positions
     tensor<double,4> dDx        = outer(Dbfs,Identity(3)).transpose({0,2,1,3});
     tensor<double,3> dcross     = dDx(all,all,1,all)*antisym3D*Dx(0,all) - dDx(all,all,0,all)*antisym3D*Dx(1,all);
@@ -443,7 +431,11 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     tensor<double,4> dmetric    = dDx * Dx.T();
                      dmetric   += dmetric.transpose({0,1,3,2});
     tensor<double,4> dmetric_C0C0 = product(product(dmetric,imetric0,{{2,0}}),imetric0,{{2,0}});
+    tensor<double,4> dmetric_CC = product(product(dmetric,imetric,{{2,0}}),imetric,{{2,0}});
     tensor<double,3> dnormal    = dcross/jac - outer(djac/(jac*jac),cross);
+
+    tensor<double,4> dmetric_par = dmetric + 2. * outer(bfs,outer(normal,curva));
+    tensor<double,2> djac_par  = djac + jac * H * outer(bfs,normal);
     
     //[2.5] Second-order derivatives of geometric quantities wrt nodal positions
     tensor<double,5> ddcross    = (dDx(all,all,1,all)*antisym3D*dDx(all,all,0,all).transpose({2,0,1})).transpose({0,1,3,4,2});
@@ -451,18 +443,17 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     tensor<double,4> ddjac      = 1./jac * (ddcross * cross + product(dcross,dcross,{{2,2}}) - outer(djac,djac));
     tensor<double,5> ddnormal   = ddcross/jac - outer(dcross,djac/(jac*jac)).transpose({0,1,3,4,2}) - outer(djac/(jac*jac),dcross) - outer(ddjac/(jac*jac),cross) + 2.0/(jac*jac*jac) * outer(outer(djac,djac),cross);
     tensor<double,6> ddmetric   = 2.0 * product(dDx,dDx,{{3,3}}).transpose({0,1,3,4,2,5});
-    
+
+
+    tensor<double,4> dDDx       = outer(DDbfs,Identity(3)).transpose({0,2,1,3});
+    tensor<double,4> dcurva     = (dDDx * normal) * voigt + (dnormal * DDx.T()) * voigt;
+    tensor<double,2> dH         = product(dcurva,imetric,{{2,0},{3,1}}) - product(dmetric_CC,curva,{{2,0},{3,1}});
+    tensor<double,6> ddmetric_par = ddmetric + 2.*outer(bfs,outer(dnormal,curva)).transpose({0,3,1,2,4,5}) + 2.*outer(bfs,outer(normal,dcurva));
+    tensor<double,4> ddjac_par  = ddjac + jac * H * outer(bfs,dnormal).transpose({0,3,1,2}) + jac * outer(outer(bfs,normal),dH) + H * outer(outer(bfs,normal),djac);
+
     tensor<double,2>& rhs_n = fill->vec_n;
-    // tensor<double,1>& rhs_g = fill->vec_c;
     tensor<double,4>& A_nn  = fill->mat_nn;
-    // tensor<double,3>& A_ng  = fill->mat_nc;
-    // tensor<double,3>& A_gn  = fill->mat_cn;
     
-    //Error in normal displacements (substracting rigid body motions, which we'll add later)
-    rhs_n += fill->w_sample * jac0 * (((x-x0)-(v-V)) * normal0) * outer(bfs,normal0);
-    A_nn  += fill->w_sample * jac0 * outer(outer(bfs,normal0),outer(bfs,normal0));
-    
-    // tensor<double,2>     DxR = Dbfs.T() * nborFields(all,range(idx_xR,idx_zR));
     tensor<double,2>     DxR = {{1.0, 0.0}, {cos(M_PI/3.0), sin(M_PI/3.0)}};
     DxR *= sqrt(4.0/sqrt(3)*A/nElem);// / sqrt(c1_0*c1_0+c2_0*c2_0);
     tensor<double,2> metricR = DxR * DxR.T();
@@ -478,24 +469,27 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     if(shear > ale_max_shear)
     {
         tensor<double,2> dI1 = product(imetricR,dmetric,{{0,2},{1,3}});
-        tensor<double,4> ddI1 = product(imetricR,ddmetric,{{0,4},{1,5}});
+        tensor<double,2> dI1_par = product(imetricR,dmetric_par,{{0,2},{1,3}});
+        tensor<double,4> ddI1_par = product(imetricR,ddmetric_par,{{0,4},{1,5}});
         tensor<double,2> dshear = 4.0/shear * ((J*J)/(I1*I1*I1) * dI1 - (J/jacR/(I1*I1)) * djac);
-        tensor<double,4> ddshear = 4.0/shear * (-3.0 * (J*J)/(I1*I1*I1*I1) * outer(dI1,dI1) + (J*J)/(I1*I1*I1) * ddI1 + 2.0 * (J/jacR/(I1*I1*I1)) * (outer(dI1,djac)+outer(djac,dI1)) - (1./(jacR*jacR)/(I1*I1)) * outer(djac,djac) - (J/jacR/(I1*I1)) * ddjac) - (1./shear) * outer(dshear,dshear);
+        tensor<double,2> dshear_par = 4.0/shear * ((J*J)/(I1*I1*I1) * dI1_par - (J/jacR/(I1*I1)) * djac_par);
+        tensor<double,4> ddshear_par = 4.0/shear * (-3.0 * (J*J)/(I1*I1*I1*I1) * outer(dI1_par,dI1) + (J*J)/(I1*I1*I1) * ddI1_par + 2.0 * (J/jacR/(I1*I1*I1)) * (outer(djac_par,dI1)+outer(dI1_par,djac)) - (1./(jacR*jacR)/(I1*I1)) * outer(djac_par,djac) - (J/jacR/(I1*I1)) * ddjac_par) - (1./shear) * outer(dshear_par,dshear);
         
         shear_factor_rhs = (shear-ale_max_shear) * (shear-ale_max_shear) / 3.0;
         shear_factor_matrix = 2.0 * (shear-ale_max_shear) / 3.0;
         energy += fill->w_sample * ale_penalty_shear * jacR * (shear-ale_max_shear) * (shear-ale_max_shear) * (shear-ale_max_shear);
-        rhs_n += fill->w_sample * ale_penalty_shear * jacR * shear_factor_rhs * (dshear * proj0); 
-        A_nn  += fill->w_sample * ale_penalty_shear * jacR * shear_factor_rhs * product(ddshear, proj0,{{1,0}}).transpose({0,3,1,2});
-        A_nn  += fill->w_sample * ale_penalty_shear * jacR * shear_factor_matrix * outer(dshear * proj0,dshear);
+        rhs_n += fill->w_sample * ale_penalty_shear * jacR * shear_factor_rhs * dshear_par; 
+        A_nn  += fill->w_sample * ale_penalty_shear * jacR * shear_factor_rhs * ddshear_par;
+        A_nn  += fill->w_sample * ale_penalty_shear * jacR * shear_factor_matrix * outer(dshear_par, dshear);
     }
 
     double jac_factor_rhs{0.0};
     double jac_factor_matrix{0.0};
     if(J < ale_min_stretch)
     {
-        jac_factor_rhs = -10.0 * (ale_min_stretch-J) * (ale_min_stretch-J) / 3.0;
-        jac_factor_matrix = 10.0 * 2.0 * (ale_min_stretch-J) / 3.0;
+        jac_factor_rhs = -(ale_min_stretch-J) * (ale_min_stretch-J) / 3.0;
+        jac_factor_matrix = 
+        2.0 * (ale_min_stretch-J) / 3.0;
     }
     else if(J > ale_max_stretch)
     {
@@ -504,22 +498,12 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     }
     energy += fill->w_sample * jacR * ale_penalty_stretch * (J-ale_max_stretch) * (J-ale_max_stretch) * (J-ale_max_stretch);
 
-    rhs_n += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_rhs * (djac * proj0);
-    A_nn  += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_rhs * product(ddjac, proj0, {{1,0}}).transpose({0,3,1,2});
-    A_nn  += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_matrix * outer((djac* proj0)/jacR,djac);
+    rhs_n += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_rhs * djac_par;
+    A_nn  += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_rhs * ddjac_par;
+    A_nn  += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_matrix * outer(djac_par/jacR,djac);
 
-    //[2.3] Rate-of-deformation tensor
-    tensor<double,2> rodt    = 0.5 * (metric-metric0);
-    tensor<double,2> rodt_CC = imetric0 * rodt * imetric0;
-    rhs_n += fill->w_sample * jac0 * ale_viscosity * product(product(dmetric,proj0,{{1,0}}),rodt_CC,{{1,0},{2,1}});
-    A_nn  += fill->w_sample * jac0 * ale_viscosity * (0.5 * product(product(dmetric,proj0,{{1,0}}),dmetric_C0C0,{{1,2},{2,3}}) + product(product(ddmetric, proj0,{{1,0}}).transpose({0,5,1,2,3,4}),rodt_CC,{{4,0},{5,1}}));
+    rhs_n += fill->w_sample * jac0 * outer(bfs, (x-x0));
+    A_nn  += fill->w_sample * jac0 * outer(outer(bfs, bfs), Identity(3)).transpose({0,2,1,3});
 
     fill->tissIntegrals(fill->idxTissIntegral("Em")) += energy;
-
-    // rhs_n          += fill->w_sample * pressure2 * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
-    // rhs_g(0)       += deltat * (fill->w_sample * (jac * xn-jac0 * x0n0)/3.0);
-
-    // A_nn           += fill->w_sample * pressure2 * deltat / 3.0 * (ddjac * xn + outer(djac,outer(bfs,normal)) + outer(outer(bfs,normal),djac) + outer(djac,dnormal*x) + outer(dnormal*x,djac) + jac * outer(dnormal,bfs).transpose({0,1,3,2}) +  jac * outer(bfs,dnormal).transpose({0,3,1,2}) + jac * ddnormal * x);
-    // A_ng(all,all,0) += fill->w_sample            * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
-    // A_gn = A_ng.transpose({2,0,1});
 }
