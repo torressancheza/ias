@@ -234,7 +234,7 @@ int main(int argc, char **argv)
         cellTissue->getTissField("ale_penalty_stretch")  = 1.E-3;
         cellTissue->getTissField("ale_max_shear") = 0.5;
         cellTissue->getTissField("ale_min_stretch") = 0.5;
-        cellTissue->getTissField("ale_max_stretch") = 2.0;
+        cellTissue->getTissField("ale_max_stretch") = 20.0;
         cellTissue->getTissField("Em") = 0.0;
         cellTissue->getTissField("nElem") = cell->getNumberOfElements();
         serialTissues.push_back(cellTissue);
@@ -415,7 +415,7 @@ int main(int argc, char **argv)
 
                     n++;
 
-                    if(eulerianNewtonRaphson->getNumberOfIterations() <= 3 and tissue->getTissField("deltat") < 0.1)
+                    if(eulerianNewtonRaphson->getNumberOfIterations() <= 3 and tissue->getTissField("deltat") < 50.0)
                         tissue->getTissField("deltat") *= 2.0;
 
                     cell->getNodeField("x0")  = cell->getNodeField("x");
@@ -423,7 +423,7 @@ int main(int argc, char **argv)
                     cell->getNodeField("z0")  = cell->getNodeField("z");
 
                     cout << eulerianNewtonRaphson->getNumberOfIterations() << " " << tissue->getTissField("deltat") << " " << abs(Em-Em0)/abs(Em) << endl;
-                } while(abs((Em-Em0)/Em) > 1.E-5 and n < 10);
+                } while(abs((Em-Em0)/Em) > 1.E-5);
 
                 if(not conv)
                     break;
