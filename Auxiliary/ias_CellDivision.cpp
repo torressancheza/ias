@@ -139,7 +139,7 @@ namespace ias
         // cout << "SALGO" << endl;
     }
 
-    Teuchos::RCP<Cell> Cell::cellDivision(double sep, double el_area)
+    Teuchos::RCP<Cell> Cell::cellDivision(double sep, double elArea, std::vector<double> planeNormal, std::vector<double> planeCentre)
     {
         using namespace std;
         using namespace Tensor;
@@ -147,31 +147,55 @@ namespace ias
         using Teuchos::rcp;
         
         if(_bfType == BasisFunctionType::LoopSubdivision)
-            el_area *= 4.0;
+            elArea *= 4.0;
 
-        //FIXME: make this an option
-        random_device rd;  //Will be used to obtain a seed for the random number engine
-        mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
-        uniform_real_distribution<> dis(-1.0, 1.0);
-        
         vtkSmartPointer<vtkPolyData> polydata = getPolyData();
         
         double separation = sep/2.0;
-        
-        vtkSmartPointer<vtkIntegrateAttributes> intatr = vtkSmartPointer<vtkIntegrateAttributes>::New();
-        intatr->SetInputData(polydata);
-        intatr->SetDivideAllCellDataByVolume(true);
-        intatr->Update();
-        
 
-        auto integral = intatr->GetOutput();
-        tensor<double,1> center = {integral->GetPoint(0)[0],integral->GetPoint(0)[1],integral->GetPoint(0)[2]};
+        tensor<double,1> normal;
+        if(planeNormal.size() == 0)
+        {
+            random_device rd;  //Will be used to obtain a seed for the random number engine
+            mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+            uniform_real_distribution<> dis(-1.0, 1.0);
+
+            double theta = M_PI*(1.0+dis(gen))*0.5;
+            double phi   = M_PI*dis(gen);
+            
+            normal.resize(3);
+            normal = {cos(phi)*sin(theta),sin(phi)*sin(theta),cos(theta)};
+            normal /= sqrt(normal*normal);
+        }
+        else if ( planeNormal.size() == 3)
+        {
+            normal = tensor<double,1>(planeNormal.data(),3);
+        }
+        else
+        {
+            throw runtime_error("Cell::cellDivision: planeNormal should have dimension 3 but it has dimension " + to_string(planeNormal.size())+".");
+        }
         
-        double theta = M_PI*(1.0+dis(gen))*0.5;
-        double phi   = M_PI*dis(gen);
-        
-        tensor<double,1> normal = {cos(phi)*sin(theta),sin(phi)*sin(theta),cos(theta)};
-        normal /= sqrt(normal*normal);
+        tensor<double,1> center;
+        if(planeCentre.size() == 0)
+        {
+            vtkSmartPointer<vtkIntegrateAttributes> intatr = vtkSmartPointer<vtkIntegrateAttributes>::New();
+            intatr->SetInputData(polydata);
+            intatr->SetDivideAllCellDataByVolume(true);
+            intatr->Update();
+            
+            auto integral = intatr->GetOutput();
+            center.resize(3);
+            center = {integral->GetPoint(0)[0],integral->GetPoint(0)[1],integral->GetPoint(0)[2]};
+        }
+        else if ( planeCentre.size() == 3)
+        {
+            center = tensor<double,1>(planeCentre.data(),3);
+        }
+        else
+        {
+            throw runtime_error("Cell::cellDivision: planeCentre should have dimension 3 but it has dimension " + to_string(planeNormal.size())+".");
+        }
         
         RCP<Cell> daughter = rcp(new Cell());
         RCP<Cell> mother = rcp(new Cell());
@@ -209,7 +233,7 @@ namespace ias
             vtkSmartPointer<SurfaceRemeshing> vtkRemeshing = SurfaceRemeshing::New();
             vtkRemeshing->SetInputData( polydata_1 );
             vtkRemeshing->SetElementSizeModeToTargetArea();
-            vtkRemeshing->SetTargetArea(el_area);
+            vtkRemeshing->SetTargetArea(elArea);
             vtkRemeshing->SetNumberOfIterations(10);
             vtkRemeshing->SetTriangleSplitFactor(10.0);
             vtkRemeshing->SetNumberOfConnectivityOptimizationIterations(100);
@@ -259,7 +283,7 @@ namespace ias
             vtkRemeshing = SurfaceRemeshing::New();
             vtkRemeshing->SetInputData( polydata_2 );
             vtkRemeshing->SetElementSizeModeToTargetArea();
-            vtkRemeshing->SetTargetArea(el_area);
+            vtkRemeshing->SetTargetArea(elArea);
             vtkRemeshing->SetNumberOfIterations(10);
             vtkRemeshing->SetTriangleSplitFactor(10.0);
             vtkRemeshing->SetNumberOfConnectivityOptimizationIterations(100);
@@ -640,7 +664,7 @@ namespace ias
     }
 
 
-    void Tissue::cellDivision(std::vector<int> cellIds, double sep, double elArea)
+    void Tissue::cellDivision(std::vector<int> cellIds, double sep, double elArea, std::vector<std::vector<double>> planes, std::vector<std::vector<double>> centres)
     {
         using namespace std;
         using Teuchos::RCP;
@@ -668,8 +692,9 @@ namespace ias
         for(int i = 0; i < loc_nCells; i++)
         {
             auto c = _cells[i];
+            auto it = find(cellIds.begin(), cellIds.end(),c->getCellField("cellId"));
 
-            if(find(cellIds.begin(), cellIds.end(),c->getCellField("cellId")) != cellIds.end())
+            if(it != cellIds.end())
             {
                 RCP<Cell> newCell = Teuchos::null;
                 size_t ntries{};
@@ -677,7 +702,15 @@ namespace ias
                 {
                     try
                     {
-                        newCell = c->cellDivision(sep, elArea);
+                        if(planes.size() > 0 and centres.size() > 0)
+                            newCell = c->cellDivision(sep, elArea, planes[it-cellIds.begin()], centres[it-cellIds.begin()]);
+                        else if ( planes.size() > 0 and centres.size() == 0)
+                            newCell = c->cellDivision(sep, elArea, planes[it-cellIds.begin()], {});
+                        else if ( planes.size() == 0 and centres.size() > 0)
+                            newCell = c->cellDivision(sep, elArea, {}, centres[it-cellIds.begin()]);
+                        else
+                            newCell = c->cellDivision(sep, elArea);
+                            
                         break;
                     }
                     catch (runtime_error err)

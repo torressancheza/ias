@@ -14,6 +14,7 @@
 
 #include <vtkSmartPointer.h>
 #include <vtkPolyData.h>
+#include <vtkCellLocator.h>
 #include <vtkUnstructuredGrid.h>
 
 
@@ -195,7 +196,7 @@ namespace ias
             /*! @brief Create a new mesh to reduce element distortion */
             void remesh(double tArea = 0.05);
             /*! @brief Divide the cell creating two daughters separated by a distance sep. First daughter replaces the cell, the other daughter is given as an output.  */
-            Teuchos::RCP<Cell> cellDivision(double sep, double tArea);
+            Teuchos::RCP<Cell> cellDivision(double sep, double elArea, std::vector<double> planeNormal = {}, std::vector<double> planeCentre = {});
             /** @} */
 
         private:
@@ -218,6 +219,8 @@ namespace ias
         friend class Tissue;
         friend class TissueGen;
         friend class Integration;
+        friend void mapFields(Teuchos::RCP<Cell> cell1, Teuchos::RCP<Cell> cell2);
+
     };
 
     void mapFields(Teuchos::RCP<Cell> cell1, Teuchos::RCP<Cell> cell2);

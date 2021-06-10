@@ -148,11 +148,11 @@ namespace ias
         int nFields = _nodeFields.shape()[1];
         std::vector<std::vector<double>> bfs = _bfs->computeBasisFunctions(xi, e);
         Tensor::tensor<double,1> fields(nFields);
-        fields = 0.0;
         double* raw = fields.data();
-        for(int i=0; i < eNN; i++)
+        for(int f=0; f < nFields; f++)
         {
-            for(int f=0; f < nFields; f++)
+            raw[f] = 0.0;
+            for(int i=0; i < eNN; i++)
                 raw[f] += _nodeFields(adjEN[i],f) * bfs[0][i];
         }
         

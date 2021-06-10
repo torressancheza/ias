@@ -194,7 +194,7 @@ namespace ias
                 }
             }
         
-            void cellDivision(std::vector<int> cellIds, double sep, double elArea);
+            void cellDivision(std::vector<int> cellIds, double sep, double elArea, std::vector<std::vector<double>> planes = {}, std::vector<std::vector<double>> centres = {});
 
             void setTissueFieldNames(std::vector<std::string> tissFieldNames)
             {    _tissFieldNames = tissFieldNames;    }
