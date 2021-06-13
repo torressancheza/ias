@@ -229,12 +229,12 @@ int main(int argc, char **argv)
         cellTissue->setTissueFieldNames({"deltat", "ale_penalty_shear", "ale_penalty_stretch", "ale_max_shear", "ale_min_stretch", "ale_max_stretch", "Em", "nElem"});
         cellTissue->Update();
         cellTissue->calculateCellCellAdjacency(3.0*intCL+intEL);
-        cellTissue->getTissField("deltat") = 1.E0;
-        cellTissue->getTissField("ale_penalty_shear")  = 1.E-3;
-        cellTissue->getTissField("ale_penalty_stretch")  = 1.E-3;
+        cellTissue->getTissField("deltat") = 1.E-1;
+        cellTissue->getTissField("ale_penalty_shear")  = 1.E0;
+        cellTissue->getTissField("ale_penalty_stretch")  = 1.E0;
         cellTissue->getTissField("ale_max_shear") = 0.5;
-        cellTissue->getTissField("ale_min_stretch") = 0.5;
-        cellTissue->getTissField("ale_max_stretch") = 20.0;
+        cellTissue->getTissField("ale_min_stretch") = 0.0;
+        cellTissue->getTissField("ale_max_stretch") = 2.0;
         cellTissue->getTissField("Em") = 0.0;
         cellTissue->getTissField("nElem") = cell->getNumberOfElements();
         serialTissues.push_back(cellTissue);
@@ -369,8 +369,9 @@ int main(int argc, char **argv)
         if(tissue->getMyPart()==0)
             cout << "Solving for velocities" << endl;
         
-        physicsNewtonRaphson->solve();
-        conv = physicsNewtonRaphson->getConvergence();
+        // physicsNewtonRaphson->solve();
+        // conv = physicsNewtonRaphson->getConvergence();
+        conv = 1;
         
         auto finish_3 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_3 = finish_3 - finish_2;
@@ -415,7 +416,7 @@ int main(int argc, char **argv)
 
                     n++;
 
-                    if(eulerianNewtonRaphson->getNumberOfIterations() <= 3 and tissue->getTissField("deltat") < 50.0)
+                    if(eulerianNewtonRaphson->getNumberOfIterations() <= 4 and tissue->getTissField("deltat") < 50.0)
                         tissue->getTissField("deltat") *= 2.0;
 
                     cell->getNodeField("x0")  = cell->getNodeField("x");
@@ -423,7 +424,7 @@ int main(int argc, char **argv)
                     cell->getNodeField("z0")  = cell->getNodeField("z");
 
                     cout << eulerianNewtonRaphson->getNumberOfIterations() << " " << tissue->getTissField("deltat") << " " << abs(Em-Em0)/abs(Em) << endl;
-                } while(abs((Em-Em0)/Em) > 1.E-5);
+                } while(abs((Em-Em0)/Em) > 1.E-8 and n < 20);
 
                 if(not conv)
                     break;

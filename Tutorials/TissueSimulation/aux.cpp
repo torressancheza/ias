@@ -477,7 +477,7 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
         
         shear_factor_rhs = (shear-ale_max_shear) * (shear-ale_max_shear) / 3.0;
         shear_factor_matrix = 2.0 * (shear-ale_max_shear) / 3.0;
-        energy += fill->w_sample * ale_penalty_shear * jacR * (shear-ale_max_shear) * (shear-ale_max_shear) * (shear-ale_max_shear);
+        energy += fill->w_sample * ale_penalty_shear * jacR * (shear-ale_max_shear) * (shear-ale_max_shear) * (shear-ale_max_shear)/deltat;
         rhs_n += fill->w_sample * ale_penalty_shear * jacR * shear_factor_rhs * dshear_par; 
         A_nn  += fill->w_sample * ale_penalty_shear * jacR * shear_factor_rhs * ddshear_par;
         A_nn  += fill->w_sample * ale_penalty_shear * jacR * shear_factor_matrix * outer(dshear_par, dshear);
@@ -488,15 +488,14 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     if(J < ale_min_stretch)
     {
         jac_factor_rhs = -(ale_min_stretch-J) * (ale_min_stretch-J) / 3.0;
-        jac_factor_matrix = 
-        2.0 * (ale_min_stretch-J) / 3.0;
+        jac_factor_matrix = 2.0 * (ale_min_stretch-J) / 3.0;
     }
     else if(J > ale_max_stretch)
     {
         jac_factor_rhs = (J-ale_max_stretch) * (J-ale_max_stretch) / 3.0;
         jac_factor_matrix = 2.0 * (J-ale_max_stretch) / 3.0;
     }
-    energy += fill->w_sample * jacR * ale_penalty_stretch * (J-ale_max_stretch) * (J-ale_max_stretch) * (J-ale_max_stretch);
+    energy += fill->w_sample * jacR * ale_penalty_stretch * (J-ale_max_stretch) * (J-ale_max_stretch) * (J-ale_max_stretch)/deltat;
 
     rhs_n += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_rhs * djac_par;
     A_nn  += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_rhs * ddjac_par;
