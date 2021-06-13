@@ -369,9 +369,8 @@ int main(int argc, char **argv)
         if(tissue->getMyPart()==0)
             cout << "Solving for velocities" << endl;
         
-        // physicsNewtonRaphson->solve();
-        // conv = physicsNewtonRaphson->getConvergence();
-        conv = 1;
+        physicsNewtonRaphson->solve();
+        conv = physicsNewtonRaphson->getConvergence();
         
         auto finish_3 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_3 = finish_3 - finish_2;
