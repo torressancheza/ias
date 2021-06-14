@@ -296,7 +296,6 @@ void eulerianUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     tensor<double,1>&  tissFields = fill->tissFields;
 
     double deltat    = tissFields(fill->idxTissField("deltat"));
-    double pressure2 = globFields(fill->idxCellField("Paux"));
     
     int idx_x = fill->idxNodeField("x");
     int idx_z = fill->idxNodeField("z");
@@ -340,20 +339,10 @@ void eulerianUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     tensor<double,6> ddmetric   = 2.0 * product(dDx,dDx,{{3,3}}).transpose({0,1,3,4,2,5});
     
     tensor<double,2>& rhs_n = fill->vec_n;
-    tensor<double,1>& rhs_g = fill->vec_c;
     tensor<double,4>& A_nn  = fill->mat_nn;
-    tensor<double,3>& A_ng  = fill->mat_nc;
-    tensor<double,3>& A_gn  = fill->mat_cn;
 
     rhs_n += fill->w_sample * jac0 * outer(bfs,x-(x0+V+((v-V)*normal0)*normal0));
     A_nn  += fill->w_sample * jac0 * outer(outer(bfs,bfs),Identity(3)).transpose({0,2,1,3});
-    
-    rhs_n          += fill->w_sample * pressure2 * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
-    rhs_g(0)       += deltat * (fill->w_sample * (jac * xn-jac0 * x0n0)/3.0);
-
-    A_nn           += fill->w_sample * pressure2 * deltat / 3.0 * (ddjac * xn + outer(djac,outer(bfs,normal)) + outer(outer(bfs,normal),djac) + outer(djac,dnormal*x) + outer(dnormal*x,djac) + jac * outer(dnormal,bfs).transpose({0,1,3,2}) +  jac * outer(bfs,dnormal).transpose({0,3,1,2}) + jac * ddnormal * x);
-    A_ng(all,all,0) += fill->w_sample            * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
-    A_gn = A_ng.transpose({2,0,1});
 }
 
 void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)

@@ -369,9 +369,8 @@ int main(int argc, char **argv)
         if(tissue->getMyPart()==0)
             cout << "Solving for velocities" << endl;
         
-        // physicsNewtonRaphson->solve();
-        // conv = physicsNewtonRaphson->getConvergence();
-        conv = 1;
+        physicsNewtonRaphson->solve();
+        conv = physicsNewtonRaphson->getConvergence();
         
         auto finish_3 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_3 = finish_3 - finish_2;
@@ -383,52 +382,11 @@ int main(int argc, char **argv)
         {
             int nIter = physicsNewtonRaphson->getNumberOfIterations();
             
-            for(auto cell: tissue->getLocalCells())
-            {
-                cell->getNodeField("x") += cell->getNodeField("vx");
-                cell->getNodeField("y") += cell->getNodeField("vy");
-                cell->getNodeField("z") += cell->getNodeField("vz");
-
-                cell->getNodeField("x0")  = cell->getNodeField("x");
-                cell->getNodeField("y0")  = cell->getNodeField("y");
-                cell->getNodeField("z0")  = cell->getNodeField("z");
-            }
-            
             if(tissue->getMyPart()==0)
                 cout << "Solving for displacement with " << updateMethod  << endl;
 
-            for(auto eulerianNewtonRaphson: eulerianNewtonRaphsons)
-            {
-                auto tissue = eulerianNewtonRaphson->getIntegration()->getTissue();
-                auto cell = tissue->getLocalCells()[0];
-                double Em = tissue->getTissField("Em");
-                double Em0 = Em;
-                int n{};
-                do
-                {
-                    eulerianNewtonRaphson->solve();
-                    Em0 = Em;
-                    Em = tissue->getTissField("Em");
-
-                    conv = eulerianNewtonRaphson->getConvergence();
-                    if(not conv)
-                        tissue->getTissField("deltat") /= 2.0;
-
-                    n++;
-
-                    if(eulerianNewtonRaphson->getNumberOfIterations() <= 4 and tissue->getTissField("deltat") < 50.0)
-                        tissue->getTissField("deltat") *= 2.0;
-
-                    cell->getNodeField("x0")  = cell->getNodeField("x");
-                    cell->getNodeField("y0")  = cell->getNodeField("y");
-                    cell->getNodeField("z0")  = cell->getNodeField("z");
-
-                    cout << eulerianNewtonRaphson->getNumberOfIterations() << " " << tissue->getTissField("deltat") << " " << abs(Em-Em0)/abs(Em) << endl;
-                } while(abs((Em-Em0)/Em) > 1.E-8 and n < 20);
-
-                if(not conv)
-                    break;
-            }
+            conv = UpdateMeshes(eulerianNewtonRaphsons, updateMethod);
+            
             MPI_Allreduce(MPI_IN_PLACE, &conv, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
             finish_4 = std::chrono::high_resolution_clock::now();
             
