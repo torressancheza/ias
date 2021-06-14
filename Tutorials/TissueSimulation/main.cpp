@@ -229,7 +229,7 @@ int main(int argc, char **argv)
         cellTissue->setTissueFieldNames({"deltat", "ale_penalty_shear", "ale_penalty_stretch", "ale_max_shear", "ale_min_stretch", "ale_max_stretch", "Em", "nElem"});
         cellTissue->Update();
         cellTissue->calculateCellCellAdjacency(3.0*intCL+intEL);
-        cellTissue->getTissField("deltat") = 1.E-1;
+        cellTissue->getTissField("deltat") = 1.E-3;
         cellTissue->getTissField("ale_penalty_shear")  = 1.E0;
         cellTissue->getTissField("ale_penalty_stretch")  = 1.E0;
         cellTissue->getTissField("ale_max_shear") = 0.5;
@@ -306,7 +306,7 @@ int main(int argc, char **argv)
         eulerianNewtonRaphson->setSolutionTolerance(1.E-8);
         eulerianNewtonRaphson->setResidueTolerance(1.E-8);
         eulerianNewtonRaphson->setMaximumNumberOfIterations(5);
-        eulerianNewtonRaphson->setVerbosity(false);
+        eulerianNewtonRaphson->setVerbosity(true);
         eulerianNewtonRaphson->Update();
 
         eulerianNewtonRaphsons.push_back(eulerianNewtonRaphson);

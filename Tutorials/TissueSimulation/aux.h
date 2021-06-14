@@ -179,39 +179,49 @@ inline bool UpdateMeshes(std::vector<Teuchos::RCP<ias::solvers::NewtonRaphson>>&
         {
             auto tissue = eulerianNewtonRaphson->getIntegration()->getTissue();
             auto cell = tissue->getLocalCells()[0];
-            double Em = tissue->getTissField("Em");
-            double Em0 = Em;
-            int n{};
-
-            cell->getNodeField("x") += cell->getNodeField("vx");
-            cell->getNodeField("y") += cell->getNodeField("vy");
-            cell->getNodeField("z") += cell->getNodeField("vz");
+            
+            eulerianNewtonRaphson->getIntegration()->setSingleIntegrand(eulerianUpdate);
+            eulerianNewtonRaphson->solve();
+            conv = eulerianNewtonRaphson->getConvergence();
+            eulerianNewtonRaphson->getIntegration()->setSingleIntegrand(arbLagEulUpdate);
 
             cell->getNodeField("x0") = cell->getNodeField("x");
             cell->getNodeField("y0") = cell->getNodeField("y");
             cell->getNodeField("z0") = cell->getNodeField("z");
 
+            
+            double Em = tissue->getTissField("Em");
+            double Em0 = Em;
+            int n{};
+
+            // cell->getNodeField("x") += cell->getNodeField("vx");
+            // cell->getNodeField("y") += cell->getNodeField("vy");
+            // cell->getNodeField("z") += cell->getNodeField("vz");
+
             do
             {
                 eulerianNewtonRaphson->solve();
-                Em0 = Em;
-                Em = tissue->getTissField("Em");
 
                 conv = eulerianNewtonRaphson->getConvergence();
-                if(not conv)
-                    tissue->getTissField("deltat") /= 2.0;
-
                 n++;
+                if(conv != 1)
+                    tissue->getTissField("deltat") /= 2.0;
+                else 
+                {
+                    cell->getNodeField("x0") = cell->getNodeField("x");
+                    cell->getNodeField("y0") = cell->getNodeField("y");
+                    cell->getNodeField("z0") = cell->getNodeField("z");
 
-                if(eulerianNewtonRaphson->getNumberOfIterations() <= 4 and tissue->getTissField("deltat") < 50.0)
+                    if(eulerianNewtonRaphson->getNumberOfIterations() <= 4 and tissue->getTissField("deltat") < 1.E0)
                     tissue->getTissField("deltat") *= 2.0;
 
-                cell->getNodeField("x0") = cell->getNodeField("x");
-                cell->getNodeField("y0") = cell->getNodeField("y");
-                cell->getNodeField("z0") = cell->getNodeField("z");
+                    Em0 = Em;
+                    Em = tissue->getTissField("Em");
+                }
 
                 cout << eulerianNewtonRaphson->getNumberOfIterations() << " " << tissue->getTissField("deltat") << " " << abs(Em-Em0)/abs(Em) << endl;
-            } while(abs((Em-Em0)/Em) > 1.E-8 and n < 20);
+
+            } while( (Em > 1.E-10 and (abs(Em-Em0) > 1.E-8*Em)) or conv != 1);
 
             if(not conv)
                 break;

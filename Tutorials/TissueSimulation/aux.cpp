@@ -490,8 +490,40 @@ void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
     A_nn  += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_rhs * ddjac_par;
     A_nn  += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_matrix * outer(djac_par/jacR,djac);
 
-    rhs_n += fill->w_sample * jac0 * outer(bfs, (x-x0));
-    A_nn  += fill->w_sample * jac0 * outer(outer(bfs, bfs), Identity(3)).transpose({0,2,1,3});
+    tensor<double,2> dI1 = product(imetricR,dmetric,{{0,2},{1,3}});
+    tensor<double,2> dI1_par = product(imetricR,dmetric_par,{{0,2},{1,3}});
+    tensor<double,4> ddI1_par = product(imetricR,ddmetric_par,{{0,4},{1,5}});
+    tensor<double,2> dshear = 4.0/shear * ((J*J)/(I1*I1*I1) * dI1 - (J/jacR/(I1*I1)) * djac);
+    tensor<double,2> dshear_par = 4.0/shear * ((J*J)/(I1*I1*I1) * dI1_par - (J/jacR/(I1*I1)) * djac_par);
+    tensor<double,4> ddshear_par = 4.0/shear * (-3.0 * (J*J)/(I1*I1*I1*I1) * outer(dI1_par,dI1) + (J*J)/(I1*I1*I1) * ddI1_par + 2.0 * (J/jacR/(I1*I1*I1)) * (outer(djac_par,dI1)+outer(dI1_par,djac)) - (1./(jacR*jacR)/(I1*I1)) * outer(djac_par,djac) - (J/jacR/(I1*I1)) * ddjac_par) - (1./shear) * outer(dshear_par,dshear);
 
-    fill->tissIntegrals(fill->idxTissIntegral("Em")) += energy;
+
+    //Neohookean
+    // double energy = fill->w_sample * jacR * ale_penalty_shear * (shear*shear)/deltat;
+    // rhs_n += fill->w_sample * ale_penalty_shear * jacR * shear * dshear_par;
+    // A_nn  += fill->w_sample * ale_penalty_shear * jacR * (shear * ddshear_par + outer(dshear_par, dshear));
+    // rhs_n -= 2.0 * fill->w_sample * ale_penalty_shear * djac_par/J;
+    // A_nn  -= 2.0 * fill->w_sample * ale_penalty_shear * (ddjac_par/J-outer(djac_par,djac/(J*J*jacR)));
+    // if(J > ale_max_stretch)
+    // {
+    //     energy += fill->w_sample * jacR * ale_penalty_stretch * (J-ale_max_stretch)*(J-ale_max_stretch)*(J-ale_max_stretch)/3.0/deltat;
+    //     rhs_n += fill->w_sample * ale_penalty_stretch * (J-ale_max_stretch) * (J-ale_max_stretch) * djac_par;
+    //     A_nn  += fill->w_sample * ale_penalty_stretch * (J-ale_max_stretch) * (J-ale_max_stretch) * ddjac_par;
+    //     A_nn  += 2.0 * fill->w_sample * ale_penalty_stretch * (J-ale_max_stretch) * outer(djac_par,djac/jacR);
+    // }        
+
+    tensor<double,2> proj0 = Identity(3);
+    proj0 -= outer(normal0,normal0);
+
+    rhs_n += fill->w_sample * jac0 * outer(bfs, (x-x0) * proj0);
+    A_nn  += fill->w_sample * jac0 * outer(outer(bfs, bfs), proj0).transpose({0,2,1,3});
+
+    rhs_n += 100.0 * fill->w_sample * jac0 * outer(bfs,((x-x0)*normal0)*normal0);
+    A_nn  += 100.0 * fill->w_sample * jac0 * outer(outer(bfs,bfs),outer(normal0,normal0)).transpose({0,2,1,3});
+
+    // tensor<double,1> V = globFields(range(fill->idxCellField("X"),fill->idxCellField("Z")))/globFields(fill->idxCellField("A")) - globFields(range(fill->idxCellField("X0"),fill->idxCellField("Z0")))/globFields(fill->idxCellField("A0"));
+    // rhs_n += 100.0 * fill->w_sample * jac0 * outer(bfs,x-(x0+V+((v-V)*normal0)*normal0));
+    // A_nn  += 100.0 * fill->w_sample * jac0 * outer(outer(bfs,bfs),Identity(3)).transpose({0,2,1,3});
+
+    // fill->tissIntegrals(fill->idxTissIntegral("Em")) += energy;
 }
