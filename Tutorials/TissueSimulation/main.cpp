@@ -152,13 +152,14 @@ int main(int argc, char **argv)
         tissueGen->addCellFields({"A","X","Y","Z"});
         tissueGen->addCellFields({"A0","X0","Y0","Z0"});
         tissueGen->addCellFields({"Ai"});
-        tissueGen->addCellFields({"Ec", "Eh", "Ei"});
+        tissueGen->addCellFields({"Ec", "Eh"});
         tissueGen->addCellFields({"AR"});
 
         tissueGen->addCellFields({"intEL","intCL","intSt","tension","kappa","viscosity","frictiont","frictionn"});
         
         tissueGen->addTissField("time");
         tissueGen->addTissField("deltat");
+        tissueGen->addTissField("Ei");
 
         tissueGen->addTissField("kConfin");
         tissueGen->addTissField("tConfin");
@@ -249,6 +250,7 @@ int main(int argc, char **argv)
     physicsIntegration->setNumberOfIntegrationPointsSingleIntegral(3);
     physicsIntegration->setNumberOfIntegrationPointsDoubleIntegral(3);
     physicsIntegration->setCellIntegralFields({"A","X","Y","Z","A0","X0","Y0","Z0","Ai"});
+    physicsIntegration->setTissIntegralFields({"Ei"});
     physicsIntegration->setCellDOFsInInteractions(false);
     physicsIntegration->Update();
 

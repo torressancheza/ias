@@ -270,9 +270,10 @@ void interaction(Teuchos::RCP<ias::DoubleIntegralStr> inter)
         
         A_nn_12 += ww * ( pot * outer(djac_1,djac_2) + jac_1 * dpot/dist * outer(aux_1,djac_2) + jac_2 * dpot/dist * outer(djac_1,aux_2) + jac_1 * jac_2 * ((ddpot-dpot/dist)/(dist*dist) * outer(aux_1,aux_2) - dpot/dist * outer(bfs_1,outer(bfs_2,Identity(3))).transpose({0,2,1,3}) ));
         A_nn_21 += ww * ( pot * outer(djac_2,djac_1) + jac_2 * dpot/dist * outer(aux_2,djac_1) + jac_1 * dpot/dist * outer(djac_2,aux_1) + jac_1 * jac_2 * ((ddpot-dpot/dist)/(dist*dist) * outer(aux_2,aux_1) - dpot/dist * outer(bfs_2,outer(bfs_1,Identity(3))).transpose({0,2,1,3}) ));
-        
-        inter->fillStr1->cellIntegrals(inter->fillStr1->idxCellIntegral("Ai")) += inter->fillStr1->w_sample * jac_1;
-        inter->fillStr2->cellIntegrals(inter->fillStr2->idxCellIntegral("Ai")) += inter->fillStr2->w_sample * jac_2;
+
+        inter->fillStr1->tissIntegrals(inter->fillStr1->idxTissIntegral("Ei")) += ww * jac_1 * jac_2 * pot;
+        inter->fillStr1->cellIntegrals(inter->fillStr1->idxCellIntegral("Ai")) += ww * jac_1 * jac_2;
+        inter->fillStr2->cellIntegrals(inter->fillStr2->idxCellIntegral("Ai")) += ww * jac_1 * jac_2;
     }
 }
 
