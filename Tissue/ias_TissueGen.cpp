@@ -135,5 +135,89 @@ namespace ias
         
         return tissue;
     }
+
+    Teuchos::RCP<Tissue> TissueGen::genTripletSpheres(double r, double delta,int nSubdiv)
+    {
+        //Generates triplet of cells of radius r, whose centers are the points of an equilateral triangle, and so that there
+        //is a distance delta between the membranes of two neigbouring cells (distance 2r+delta beetween centers)
+        using namespace std;
+        using namespace Tensor;
+        using Teuchos::RCP;
+        using Teuchos::rcp;
+
+        try
+        {
+            _checkFieldNames();
+        }
+        catch (const runtime_error& error)
+        {
+            string what = error.what();
+            throw runtime_error("TissueGen::genRegularGridSphere: " + what);
+        }
+        
+        RCP<Tissue> tissue = rcp(new Tissue);
+
+        tissue->_nCells = 3;
+
+        int loc_nCells{};
+        int baseLocItem = tissue->_nCells / tissue->_nParts;
+        int remain_nItem = tissue->_nCells - baseLocItem * tissue->_nParts;
+        int currOffs = 0;
+        for (int p = 0; p < tissue->_nParts; p++)
+        {
+            int p_locnitem = (p < remain_nItem) ? (baseLocItem + 1) : (baseLocItem);
+
+            tissue->_nCellPart[p]  = p_locnitem;
+            tissue->_offsetPart[p] = currOffs;
+
+            currOffs += p_locnitem;
+        }
+        tissue->_offsetPart[tissue->_nParts] = tissue->_nCells;
+        loc_nCells = tissue->_nCellPart[tissue->getMyPart()];
+
+        RCP<Cell> cell = rcp(new Cell);
+        cell->generateSphereFromOctahedron(nSubdiv, r);
+        cell->setBasisFunctionType(_bfType);
+        for(auto f: _nodeFieldNames)
+            cell->addNodeField(f);
+        for(auto f: _cellFieldNames)
+            cell->addCellField(f);
+        cell->Update();
+                                
+        for(int n = 0; n < loc_nCells; n++)
+        {
+            int glo_n = tissue->getGlobalIdx(n);
+            double a=2*r+delta; //length of the side of the equilateral triangle
+            double z =  0; //z coordinate is zero for every cell
+            double y =  (glo_n == 0) ? 0 : a*sqrt(3)/2.0;  //y coordinate: 0 [0], a*sqrt(3)/2 [1 and 2] 
+            double x =  (glo_n == 0) ? 0 : (2*glo_n-3)*a*0.5; // x coordinate: 0 [0] -a/2 [1] a/2 [2]
+
+            cout << "Coordinates generated for glo_n= "<< glo_n <<" : " << x << " " << y << " " << z << endl;
+
+            RCP<Cell> newcell = rcp(new Cell);
+            newcell->_connec = cell->_connec;
+            newcell->_nodeFields = cell->_nodeFields;
+            newcell->_cellFields = cell->_cellFields;  
+            newcell->_bfType = _bfType;
+            newcell->_nodeFieldNames = cell->_nodeFieldNames;
+            newcell->_cellFieldNames = cell->_cellFieldNames;
+            newcell->Update();
+            
+            newcell->getCellField("cellId") = glo_n;
+
+            newcell->_nodeFields(all,0) += x;
+            newcell->_nodeFields(all,1) += y;
+            newcell->_nodeFields(all,2) += z;
+
+            tissue->_cells.emplace_back(newcell);
+        }
+        
+        tissue->_tissFields.resize(_tissFieldNames.size());
+        tissue->_tissFieldNames = _tissFieldNames;
+        
+        tissue->Update();
+        
+        return tissue;
+    }
 }
     

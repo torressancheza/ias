@@ -25,6 +25,7 @@ namespace ias
     {
         public:
             Teuchos::RCP<Tissue> genRegularGridSpheres(int nx, int ny, int nz, double deltax, double deltay, double deltaz, double r, int nSubdiv);
+            Teuchos::RCP<Tissue> genTripletSpheres(double r, double delta,int nSubdiv);
         
             /** @name Setters (prior to Update())
             *  @{ */
