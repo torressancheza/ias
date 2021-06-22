@@ -30,12 +30,6 @@ int main(int argc, char **argv)
     //---------------------------------------------------------------------------
     // [0] Input parameters
     //---------------------------------------------------------------------------
-    int nx{4};
-    int ny{1};
-    int nz{1};
-    double dx{2.1};
-    double dy{2.1};
-    double dz{2.1};
     double R{1.0};
     int nSubdiv{3};
     
@@ -67,7 +61,7 @@ int main(int argc, char **argv)
     double totTime{1.E3};
     double deltat{1.E-2};
     double stepFac{0.95};
-    double maxDeltat{1.0};
+    double maxDeltat{1.E2};
 
     int    nr_maxite{5};
     double nr_restol{1.E-8};
@@ -82,13 +76,6 @@ int main(int argc, char **argv)
         const char *config_filename = argv[1];
         ConfigFile config(config_filename);
 
-        config.readInto(       nx, "nx");
-        config.readInto(       ny, "ny");
-        config.readInto(       nz, "nz");
-        
-        config.readInto(       dx, "dx");
-        config.readInto(       dy, "dy");
-        config.readInto(       dz, "dz");
 
         config.readInto( kConfin, "kConfin");
         config.readInto( tConfin, "tConfin");
@@ -165,7 +152,12 @@ int main(int argc, char **argv)
         tissueGen->addTissFields({"dConfinX", "dConfinY", "dConfinZ"});
         tissueGen->addTissFields({"cConfinX", "cConfinY", "cConfinZ"});
 
-        tissue = tissueGen->genRegularGridSpheres(nx, ny, nz, dx, dy, dz, R, nSubdiv);
+        tissue = tissueGen->genTripletSpheres(R,intEL,nSubdiv);
+
+        for(auto cell: tissue->getLocalCells())
+        {
+            cout << "cell ID: " << cell->getCellField("cellId") << endl;
+        }
         
         tissue->calculateCellCellAdjacency(3.0*intCL+intEL);
         tissue->updateGhosts();
