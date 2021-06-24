@@ -33,9 +33,9 @@ int main(int argc, char **argv)
     double R{1.0};
     int nSubdiv{3};
     
-    bool restart{false};
-    string resLocation;
-    string resFileName;
+    bool restart{true};
+    string resLocation="/Users/vagne/work/geneva/interacting_active_surfaces/ias_exec/bin/133to176/";
+    string resFileName="Cell_t43";
 
     double     intEL = 1.E-1;
     double     intCL = 5.E-2;
@@ -60,8 +60,8 @@ int main(int argc, char **argv)
 
     double totTime{1.E3};
     double deltat{1.E-2};
-    double stepFac{0.95};
-    double maxDeltat{1.E2};
+    double stepFac{0.7};
+    double maxDeltat{1.0};
 
     int    nr_maxite{5};
     double nr_restol{1.E-8};
@@ -154,11 +154,6 @@ int main(int argc, char **argv)
 
         tissue = tissueGen->genTripletSpheres(R,intEL,nSubdiv);
 
-        for(auto cell: tissue->getLocalCells())
-        {
-            cout << "cell ID: " << cell->getCellField("cellId") << endl;
-        }
-        
         tissue->calculateCellCellAdjacency(3.0*intCL+intEL);
         tissue->updateGhosts();
         tissue->balanceDistribution();
@@ -180,7 +175,14 @@ int main(int argc, char **argv)
         {
             cell->getCellField("intEL") = intEL;
             cell->getCellField("intCL") = intCL;
-            cell->getCellField("intSt") = intSt;
+            if(cell->getCellField("cellId")==0) //different interaction strength for different cells
+            {
+                cell->getCellField("intSt") = 1.5*intSt;
+            }
+            else
+            {
+                cell->getCellField("intSt") = intSt/1.5;
+            }
             cell->getCellField("kappa") = kappa;
             cell->getCellField("tension") = tension;
             cell->getCellField("viscosity") = viscosity;
@@ -188,6 +190,12 @@ int main(int argc, char **argv)
             cell->getCellField("frictionn") = frictionn;
         }
         tissue->saveVTK("Cell","_t"+to_string(0));
+
+        for(auto cell: tissue->getLocalCells())
+        {
+            cout << "cell ID: " << cell->getCellField("cellId");
+            cout << " cell interaction strength " << cell->getCellField("intSt")  << endl;
+        }
     }
     else
     {
@@ -199,7 +207,8 @@ int main(int argc, char **argv)
         tissue->updateGhosts();
         tissue->calculateInteractingElements(intEL+3.0*intCL);
         
-        deltat = tissue->getTissField("deltat");
+        deltat = 1E-2;
+        tissue->getTissField("deltat")=1E-2;
         
         for(auto cell: tissue->getLocalCells())
         {

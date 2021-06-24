@@ -193,7 +193,12 @@ void interaction(Teuchos::RCP<ias::DoubleIntegralStr> inter)
 
     double r0        = globFields(inter->fillStr1->idxCellField("intEL"));
     double w         = globFields(inter->fillStr1->idxCellField("intCL"));
-    double D         = globFields(inter->fillStr1->idxCellField("intSt")) * deltat;
+
+    //Creating a interaction strength which is the product of the strength of each cell
+    double D1         = globFields(inter->fillStr1->idxCellField("intSt"));
+    double D2         = globFields(inter->fillStr2->idxCellField("intSt"));
+
+    double D          = D1 * D2 * deltat;
     
     //First calculate distance to see if we can drop the points
     int eNN_1    = inter->fillStr1->eNN;
