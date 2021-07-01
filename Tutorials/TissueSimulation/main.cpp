@@ -33,9 +33,9 @@ int main(int argc, char **argv)
     double R{1.0};
     int nSubdiv{3};
     
-    bool restart{true};
-    string resLocation="/Users/vagne/work/geneva/interacting_active_surfaces/ias_exec/bin/133to176/";
-    string resFileName="Cell_t43";
+    bool restart{false};
+    string resLocation{}; //"/Users/vagne/work/geneva/interacting_active_surfaces/ias_exec/bin/133to176/";
+    string resFileName{};//"Cell_t43";
 
     double     intEL = 1.E-1;
     double     intCL = 5.E-2;
@@ -61,7 +61,7 @@ int main(int argc, char **argv)
     double totTime{1.E3};
     double deltat{1.E-2};
     double stepFac{0.7};
-    double maxDeltat{1.0};
+    double maxDeltat{1e2};
 
     int    nr_maxite{5};
     double nr_restol{1.E-8};
@@ -177,11 +177,11 @@ int main(int argc, char **argv)
             cell->getCellField("intCL") = intCL;
             if(cell->getCellField("cellId")==0) //different interaction strength for different cells
             {
-                cell->getCellField("intSt") = 1.5*intSt;
+                cell->getCellField("intSt") = 2*intSt;
             }
             else
             {
-                cell->getCellField("intSt") = intSt/1.5;
+                cell->getCellField("intSt") = intSt/2;
             }
             cell->getCellField("kappa") = kappa;
             cell->getCellField("tension") = tension;
@@ -439,7 +439,7 @@ int main(int argc, char **argv)
             else
             {
                 cout << "failed!" << endl;
-                deltat *= stepFac;
+                deltat *= 2*stepFac;
                 for(auto cell: tissue->getLocalCells())
                 {
                     cell->getNodeField("x") = cell->getNodeField("x0");
