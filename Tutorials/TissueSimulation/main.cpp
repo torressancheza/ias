@@ -33,9 +33,9 @@ int main(int argc, char **argv)
     double R{1.0};
     int nSubdiv{3};
     
-    bool restart{false};
-    string resLocation{}; //"/Users/vagne/work/geneva/interacting_active_surfaces/ias_exec/bin/133to176/";
-    string resFileName{};//"Cell_t43";
+    bool restart{true};
+    string resLocation="/Users/vagne/work/geneva/interacting_active_surfaces/ias_exec/bin/";
+    string resFileName="Cell_t32";
 
     double     intEL = 1.E-1;
     double     intCL = 5.E-2;
@@ -207,8 +207,7 @@ int main(int argc, char **argv)
         tissue->updateGhosts();
         tissue->calculateInteractingElements(intEL+3.0*intCL);
         
-        deltat = 1E-2;
-        tissue->getTissField("deltat")=1E-2;
+        deltat = tissue->getTissField("deltat");
         
         for(auto cell: tissue->getLocalCells())
         {
@@ -372,6 +371,7 @@ int main(int argc, char **argv)
         
         physicsNewtonRaphson->solve();
         conv = physicsNewtonRaphson->getConvergence();
+        cout << "In Conv: " << conv << endl;
         
         auto finish_3 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_3 = finish_3 - finish_2;
@@ -420,7 +420,7 @@ int main(int argc, char **argv)
                     cell->getNodeField("vz") *= deltat;
                 }
 
-                if(nIter < nr_maxite)
+                if(nIter < nr_maxite-1)
                 {
                     deltat /= stepFac;
                     for(auto cell: tissue->getLocalCells())
@@ -428,6 +428,16 @@ int main(int argc, char **argv)
                         cell->getNodeField("vx") /= stepFac;
                         cell->getNodeField("vy") /= stepFac;
                         cell->getNodeField("vz") /= stepFac;
+                    }
+                }
+                else if(nIter==nr_maxite)
+                {
+                    deltat *= stepFac;
+                    for(auto cell: tissue->getLocalCells())
+                    {
+                        cell->getNodeField("vx") *= stepFac;
+                        cell->getNodeField("vy") *= stepFac;
+                        cell->getNodeField("vz") *= stepFac;
                     }
                 }
                 if(deltat > maxDeltat)
@@ -453,7 +463,7 @@ int main(int argc, char **argv)
         }
         else
         {
-            deltat *= stepFac;
+            deltat *= stepFac*stepFac*stepFac;
             
             for(auto cell: tissue->getLocalCells())
             {
