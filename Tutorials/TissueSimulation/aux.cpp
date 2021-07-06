@@ -186,17 +186,17 @@ void interaction(Teuchos::RCP<ias::DoubleIntegralStr> inter)
 {
     using namespace std;
     using namespace Tensor;
-
-    tensor<double,1> globFields = inter->fillStr1->cellFields;
     
     double deltat    = inter->fillStr1->tissFields(inter->fillStr1->idxTissField("deltat"));
 
-    double r0        = globFields(inter->fillStr1->idxCellField("intEL"));
-    double w         = globFields(inter->fillStr1->idxCellField("intCL"));
+    //Here we assume that r0 and w are the same everywhere in the tissue, important!
+    //we use the data of cell 1 arbitrarily
+    double r0        = inter->fillStr1->cellFields(inter->fillStr1->idxCellField("intEL"));
+    double w         = inter->fillStr1->cellFields(inter->fillStr1->idxCellField("intCL"));
 
     //Creating a interaction strength which is the product of the strength of each cell
-    double D1         = globFields(inter->fillStr1->idxCellField("intSt"));
-    double D2         = globFields(inter->fillStr2->idxCellField("intSt"));
+    double D1         = inter->fillStr1->cellFields(inter->fillStr1->idxCellField("intSt"));
+    double D2         = inter->fillStr2->cellFields(inter->fillStr2->idxCellField("intSt"));
 
     double D          = D1 * D2 * deltat;
     

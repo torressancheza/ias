@@ -33,9 +33,12 @@ int main(int argc, char **argv)
     double R{1.0};
     int nSubdiv{3};
     
-    bool restart{true};
-    string resLocation="/Users/vagne/work/geneva/interacting_active_surfaces/ias_exec/bin/";
-    string resFileName="Cell_t32";
+    //prefix of where to save cells
+    string prefix_save="Cell";
+
+    bool restart{false};
+    string resLocation{};//="/Users/vagne/work/geneva/interacting_active_surfaces/ias_exec/bin/";
+    string resFileName{};//="Cell_t32";
 
     double     intEL = 1.E-1;
     double     intCL = 5.E-2;
@@ -181,7 +184,7 @@ int main(int argc, char **argv)
             }
             else
             {
-                cell->getCellField("intSt") = intSt/2;
+                cell->getCellField("intSt") = intSt;
             }
             cell->getCellField("kappa") = kappa;
             cell->getCellField("tension") = tension;
@@ -189,7 +192,7 @@ int main(int argc, char **argv)
             cell->getCellField("frictiont") = frictiont;
             cell->getCellField("frictionn") = frictionn;
         }
-        tissue->saveVTK("Cell","_t"+to_string(0));
+        tissue->saveVTK(prefix_save,"_t"+to_string(0));
 
         for(auto cell: tissue->getLocalCells())
         {
@@ -217,7 +220,7 @@ int main(int argc, char **argv)
         }
     }
         
-    tissue->saveVTK("Cell","_t"+to_string(1));
+    tissue->saveVTK(prefix_save,"_t"+to_string(1));
 
 
     //FIXME: create a class for this so that the user doesn't need to see this
@@ -371,7 +374,6 @@ int main(int argc, char **argv)
         
         physicsNewtonRaphson->solve();
         conv = physicsNewtonRaphson->getConvergence();
-        cout << "In Conv: " << conv << endl;
         
         auto finish_3 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_3 = finish_3 - finish_2;
@@ -412,7 +414,7 @@ int main(int argc, char **argv)
                     cell->getNodeField("vy") /= deltat;
                     cell->getNodeField("vz") /= deltat;
                 }
-                tissue->saveVTK("Cell","_t"+to_string(step+1));
+                tissue->saveVTK(prefix_save,"_t"+to_string(step+1));
                 for(auto cell: tissue->getLocalCells())
                 {
                     cell->getNodeField("vx") *= deltat;
