@@ -19,13 +19,16 @@
 
 namespace ias
 {
-    void Cell::generateSphereFromOctahedron(int nSubdiv, double r)
+    void Cell::generateSphereFromPlatonicSolid(int nSubdiv, double r, int type)
     {
         using namespace Tensor;
         using namespace std;
         
+        if(type != VTK_SOLID_ICOSAHEDRON and type != VTK_SOLID_OCTAHEDRON and type != VTK_SOLID_TETRAHEDRON)
+            throw runtime_error("Cell::generateSphereFromPlatonicSolid: type can only be VTK_SOLID_ICOSAHEDRON or VTK_SOLID_OCTAHEDRON or VTK_SOLID_TETRAHEDRON");
+        
         vtkSmartPointer<vtkPlatonicSolidSource> source = vtkSmartPointer<vtkPlatonicSolidSource>::New();
-        source->SetSolidType(VTK_SOLID_OCTAHEDRON);
+        source->SetSolidType(type);
         source->Update();
         
         vtkSmartPointer<vtkPolyDataAlgorithm> subdivisionFilter = vtkSmartPointer<vtkLinearSubdivisionFilter>::New();

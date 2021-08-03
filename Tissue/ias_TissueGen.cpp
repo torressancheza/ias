@@ -95,7 +95,7 @@ namespace ias
         loc_nCells = tissue->_nCellPart[tissue->getMyPart()];
 
         RCP<Cell> cell = rcp(new Cell);
-        cell->generateSphereFromOctahedron(nSubdiv, r);
+        cell->generateSphereFromPlatonicSolid(nSubdiv, r);
         cell->setBasisFunctionType(_bfType);
         for(auto f: _nodeFieldNames)
             cell->addNodeField(f);

@@ -44,65 +44,79 @@ namespace ias
              /*! @brief Set method */
             void setMethod( Method method)
             {    _method = method;    }
+            /*! @brief Set normal friction (ALE) */
+            void setNormalFriction(double friction)
+            {    _nfriction = friction;    _ale_param_set = true;    }
+            /*! @brief Set inplane friction (ALE) */
+            void setInPlaneFriction(double friction)
+            {    _tfriction = friction;    _ale_param_set = true;    }
              /*! @brief Set inplane viscosity (ALE) */
-            void setInplaneViscosity(double viscosity)
-            {    _viscosity = viscosity;    }
-             /*! @brief Set penalty shear */
+            void setInPlaneViscosity(double viscosity)
+            {    _viscosity = viscosity;    _ale_param_set = true;    }
+             /*! @brief Set penalty shear (ALE)*/
             void setPenaltyShear(double penaltyShear)
-            {    _penaltyShear = penaltyShear;    }
-             /*! @brief Set penalty stretch */
+            {    _penaltyShear = penaltyShear;    _ale_param_set = true;    }
+             /*! @brief Set penalty stretch (ALE)*/
             void setPenaltyStretch(double penaltyStretch)
-            {    _penaltyStretch = penaltyStretch;    }
-            /*! @brief Set maximum shear */
+            {    _penaltyStretch = penaltyStretch;    _ale_param_set = true;    }
+            /*! @brief Set maximum shear  (ALE)*/
             void setMaximumShear(double maxShear)
-            {    _maxShear = maxShear;    }
-            /*! @brief Set maximum stretch */
+            {    _maxShear = maxShear;    _ale_param_set = true;    }
+            /*! @brief Set maximum stretch (ALE)*/
             void setMaximumStretch(double maxStretch)
-            {    _maxStretch = maxStretch;    }
-            /*! @brief Set maximum stretch */
+            {    _maxStretch = maxStretch;    _ale_param_set = true;    }
+            /*! @brief Set maximum stretch (ALE)*/
             void setMinimumStretch(double minStretch)
-            {    _minStretch = minStretch;    }
+            {    _minStretch = minStretch;    _ale_param_set = true;    }
 
+            /*! @brief Set remove rigid translation */
+            void setRemoveRigidBodyTranslation(bool remove_RBT)
+            {    _remove_RBT = remove_RBT;    }
 
-            /*! @brief Set names of the velocity fields */
-            void setVelocityFieldNames(std::vector<std::string> velFieldNames)
-            {    _velFieldNames = velFieldNames;    }
-            /*! @brief Set names of the fields storing the previous position*/
-            void setPreviousPositionFieldNames(std::vector<std::string> prevPosFieldNames)
-            {    _prevPosFieldNames = prevPosFieldNames;    }
-            /*! @brief Set names of the fields storing the reference position*/
-            void setReferencePositionFieldNames(std::vector<std::string> refPosFieldNames)
-            {    _refPosFieldNames = refPosFieldNames;    }
-            /*  }@ */
+            /*! @brief Set remove rigid rotations */
+            void setRemoveRigidBodyRotation(bool remove_RBR)
+            {    _remove_RBR = remove_RBR;    }
+
+            /*! @brief Set names of the displacement fields */
+            void setDisplacementFieldNames(std::vector<std::string> dispFieldNames)
+            {   
+                _dispFieldNames = dispFieldNames;    
+            }
 
             /*! @brief Creates all the structure  */
             void Update();
             /** @} */
-            void UpdateParametrisation();
+            bool UpdateParametrisation();
 
         protected:
             Teuchos::RCP<Tissue> _tissue = Teuchos::null;
             Method _method = Method::Undefined;
 
-            double _viscosity{};
-            double _penaltyShear{};
-            double _penaltyStretch{};
-            double _maxShear{};
-            double _maxStretch{};
-            double _minStretch{};
-            std::vector<std::string> _velFieldNames;
-            std::vector<std::string> _prevPosFieldNames;
-            std::vector<std::string> _refPosFieldNames;
+            double _tfriction{1.E-2};
+            double _nfriction{1.E1};
+            double _viscosity{1.0};
+            double _penaltyShear{1.0};
+            double _penaltyStretch{1.E-1};
+            double _maxShear{0.5};
+            double _maxStretch{1.25};
+            double _minStretch{0.0};
+            std::vector<std::string> _dispFieldNames;
             std::vector<Teuchos::RCP<Tissue>> _tissues;
             std::vector<Teuchos::RCP<Integration>> _integrations;
             std::vector<Teuchos::RCP<solvers::TrilinosAztecOO>> _linearSolvers;
             std::vector<Teuchos::RCP<solvers::NewtonRaphson>> _newtonRaphsons;
+            std::vector<Tensor::tensor<double,2>> _x0;
+
+            bool _remove_RBT{};
+            bool _remove_RBR{};
+            bool _ale_param_set{};
             
             void _checkSettings();
-
-            void _eulerianUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill);
-            void _arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill);
-            
+                    
+            std::function<void(Teuchos::RCP<SingleIntegralStr>)> _updateFunction;
+            static void _centreOfMass(Teuchos::RCP<ias::SingleIntegralStr> fill);
+            static void _eulerianUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill);
+            static void _arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill);
     };
 }
 

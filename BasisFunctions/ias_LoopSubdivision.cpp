@@ -336,7 +336,7 @@ namespace ias
             return basisFunctionsDerNode0(eval);
 
         // evaluate the number of the required subdivisions
-        int na = 0;
+        int na = 0; //number of subdivisions-1
         double min = 0.0;
         double max = 0.5;
 
@@ -348,7 +348,6 @@ namespace ias
         }
                 
         //barycentric coordinates after subdivision
-//        int potenz = na+1;
         double pow2   = pow(2.0, na);
         v  *= pow2;
         w  *= pow2;
@@ -384,7 +383,6 @@ namespace ias
         
         //check new barycentric coordinates
         assert((u<(1.0+_eps))&&(u>-_eps));
-
         
         tensor<double,2> picking = pickmtrx(eval, type);
         tensor<double,2> subdiv  = subdivisionmatrix(eval);

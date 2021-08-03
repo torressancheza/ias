@@ -119,6 +119,24 @@ namespace ias
                 _matrix->GlobalAssemble();
                 if ( reinterpret_cast<void*>(_assembleElementalMatrix) == reinterpret_cast<void*>(AssembleElementalMatrix<true>))
                     _assembleElementalMatrix = AssembleElementalMatrix<false>;
+
+                _cellIntegrals->GlobalAssemble();
+                double **_cellIntegrals_ptr;
+                _cellIntegrals->ExtractView(&_cellIntegrals_ptr);
+                
+                int idx{};
+                for(size_t n = 0; n < _tissue->_cells.size(); n++)
+                {
+                    for(int i = 0; i < int(_cellIntegralIdx.size()); i++)
+                    {
+                        _tissue->_cells[n]->getCellField(_cellIntegralIdx[i]) = _cellIntegrals_ptr[0][idx];
+                        idx++;
+                    }
+                }
+
+                for(int i = 0; i < int(_tissIntegralIdx.size()); i++)
+                    _tissue->getTissField(_tissIntegralIdx[i]) = _tissIntegrals(i);        
+
             }
             void recalculateMatrixStructure()
             {
@@ -140,17 +158,14 @@ namespace ias
             {    _sol->PutScalar(scalar);    }
             void InitialiseTissIntegralFields(double scalar = 0.0)
             {
-                for(int i = 0; i < int(_tissIntegralIdx.size()); i++)
-                    _tissue->getTissField(_tissIntegralIdx[i]) = scalar;
+                _tissIntegrals = scalar;
+                // for(int i = 0; i < int(_tissIntegralIdx.size()); i++)
+                // _tissue->getTissField(_tissIntegralIdx[i]) = scalar;
             }
 
             void InitialiseCellIntegralFields(double scalar=0.0)
             {
-                for(int i = 0; i < int(_cellIntegralIdx.size()); i++)
-                {
-                    for(auto cell: _tissue->getLocalCells())
-                        cell->getCellField(_cellIntegralIdx[i]) = scalar;
-                }
+                _cellIntegrals->PutScalar(scalar);
             }
             /** @} */
 
@@ -201,6 +216,10 @@ namespace ias
             Teuchos::RCP<Epetra_FEVector>        _vector = Teuchos::null;
             Teuchos::RCP<Epetra_FEVector>           _sol = Teuchos::null;
             Teuchos::RCP<Epetra_LinearProblem> _linProbl = Teuchos::null;
+
+            Teuchos::RCP<Epetra_FEVector> _cellIntegrals = Teuchos::null;
+            Tensor::tensor<double,1> _tissIntegrals;
+
 
             int _iPts_single{};
             std::vector<double> _wSamples_single;

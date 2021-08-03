@@ -106,6 +106,10 @@ namespace ias
             _savedBFs_intera.emplace_back(bftype);
         }
         
+        Epetra_Map vec_map_int(-1, _tissue->_cells.size() * _cellIntegralIdx.size(), 0, Epetra_MpiComm(_tissue->_comm));
+        _cellIntegrals = rcp(new Epetra_FEVector(vec_map_int));
+        _tissIntegrals.resize(_tissIntegralNames.size());
+
         //First use AssembleElementalMatrix with create to true
         _assembleElementalMatrix = AssembleElementalMatrix<true>;
     }
@@ -120,10 +124,9 @@ namespace ias
         if(_singleIntegrand==nullptr)
             return;
         
-        
         Tensor::tensor<double,1> tissIntegrals(_tissIntegralIdx.size());
         tissIntegrals = 0.0;
-        
+                
         for(int n=0; n < int(_tissue->_cells.size());n++)
         {
             int glo_n = _tissue->getGlobalIdx(n);
@@ -138,7 +141,7 @@ namespace ias
             int nNodeDOFs   = _nodeDOFIdx.size();
             int nCellDOFs   = _cellDOFIdx.size();
             int eNNMax      = _tissue->_cells[n]->_bfs->getMaxNumberOfNeighbours();
-            
+
             #pragma omp parallel
             {
                 std::vector<double> v_inputFields(eNNMax*nNodeFields+nCellFields,0.0);
@@ -258,18 +261,19 @@ namespace ias
                 
                 #pragma omp critical
                 tissIntegrals += loc_tissIntegrals;
+
                 for(int i = 0; i < int(_cellIntegralIdx.size()); i++)
                 {
+                    int i1 = glo_n*_cellIntegralIdx.size()+i;
                     #pragma omp critical
-                    _tissue->_cells[n]->getCellField(_cellIntegralIdx[i]) += cellIntegrals(i);
+                    _cellIntegrals->SumIntoGlobalValues(1, &i1, &cellIntegrals(i));
                 }
             }
         }
 
         MPI_Allreduce(MPI_IN_PLACE, tissIntegrals.data(), tissIntegrals.size(), MPI_DOUBLE, MPI_SUM, _tissue->_comm);
         
-        for(int i = 0; i < int(_tissIntegralIdx.size()); i++)
-            _tissue->getTissField(_tissIntegralIdx[i]) += tissIntegrals(i);
+        _tissIntegrals = tissIntegrals;
     }
 
     void Integration::computeDoubleIntegral()
@@ -288,8 +292,8 @@ namespace ias
         tissIntegrals = 0.0;
         
         
-        Epetra_Map vec_map(-1, _tissue->_cells.size() * _cellIntegralIdx.size(), 0, Epetra_MpiComm(_tissue->_comm));
-        Teuchos::RCP<Epetra_FEVector> aux_cellIntegrals = rcp(new Epetra_FEVector(vec_map));
+        // Epetra_Map vec_map(-1, _tissue->_cells.size() * _cellIntegralIdx.size(), 0, Epetra_MpiComm(_tissue->_comm));
+        // Teuchos::RCP<Epetra_FEVector> aux_cellIntegrals = rcp(new Epetra_FEVector(vec_map));
         
         for(size_t inte = 0; inte < _tissue->_inters[_tissue->getMyPart()].size(); inte++)
         {
@@ -485,7 +489,6 @@ namespace ias
 
                     if(e != e0)
                     {
-                        
                         if(e0 != -1)
                         {
                             loc_tissIntegrals += singIntStr_1->tissIntegrals;
@@ -659,34 +662,17 @@ namespace ias
                 {
                     int i1 = glo_n*_cellIntegralIdx.size()+i;
                     #pragma omp critical
-                    aux_cellIntegrals->SumIntoGlobalValues(1, &i1, &cellIntegrals_1(i));
+                    _cellIntegrals->SumIntoGlobalValues(1, &i1, &cellIntegrals_1(i));
                     int i2 = glo_m*_cellIntegralIdx.size()+i;
                     #pragma omp critical
-                    aux_cellIntegrals->SumIntoGlobalValues(1, &i2, &cellIntegrals_2(i));
+                    _cellIntegrals->SumIntoGlobalValues(1, &i2, &cellIntegrals_2(i));
                 }
             }
         }
         
         MPI_Allreduce(MPI_IN_PLACE, tissIntegrals.data(), tissIntegrals.size(), MPI_DOUBLE, MPI_SUM, _tissue->_comm);
         
-        for(int i = 0; i < int(_tissIntegralIdx.size()); i++)
-            _tissue->getTissField(_tissIntegralIdx[i]) += tissIntegrals(i);
-        
-        
-        aux_cellIntegrals->GlobalAssemble();
-        double **aux_cellIntegrals_ptr;
-        aux_cellIntegrals->ExtractView(&aux_cellIntegrals_ptr);
-        
-        int idx{};
-        for(size_t n = 0; n < _tissue->_cells.size(); n++)
-        {
-            for(int i = 0; i < int(_cellIntegralIdx.size()); i++)
-            {
-                _tissue->_cells[n]->getCellField(_cellIntegralIdx[i]) += aux_cellIntegrals_ptr[0][idx];
-                idx++;
-            }
-        }
-        
+        _tissIntegrals = tissIntegrals;
     }
 
 

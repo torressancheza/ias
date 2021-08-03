@@ -15,15 +15,10 @@
 #include "ias_Tissue.h"
 #include "ias_TissueGen.h"
 #include "ias_Integration.h"
-#include "ias_AztecOO.h"
-#include "ias_NewtonRaphson.h"
 #include "ConfigFile.h"
 
 void internal(Teuchos::RCP<ias::SingleIntegralStr> fill);
 void interaction(Teuchos::RCP<ias::DoubleIntegralStr> fill);
-
-void eulerianUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill);
-void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill);
 
 inline double SmoothStep(double rc1, double rc2, double r)
 {
@@ -164,71 +159,5 @@ inline Tensor::tensor<double,2> ddConfinementPotential(double k, Tensor::tensor<
     return ddpot;
 }
 
-inline bool UpdateMeshes(std::vector<Teuchos::RCP<ias::solvers::NewtonRaphson>>& eulerianNewtonRaphsons, std::string updateMethod)
-{
-    bool conv{};
-
-    for(auto eulerianNewtonRaphson: eulerianNewtonRaphsons)
-    {
-        if(updateMethod.compare("eulerian")==0)
-        {
-            eulerianNewtonRaphson->solve();
-            conv = eulerianNewtonRaphson->getConvergence();
-        }
-        else
-        {
-            auto tissue = eulerianNewtonRaphson->getIntegration()->getTissue();
-            auto cell = tissue->getLocalCells()[0];
-            
-            eulerianNewtonRaphson->getIntegration()->setSingleIntegrand(eulerianUpdate);
-            eulerianNewtonRaphson->solve();
-            conv = eulerianNewtonRaphson->getConvergence();
-            eulerianNewtonRaphson->getIntegration()->setSingleIntegrand(arbLagEulUpdate);
-
-            cell->getNodeField("x0") = cell->getNodeField("x");
-            cell->getNodeField("y0") = cell->getNodeField("y");
-            cell->getNodeField("z0") = cell->getNodeField("z");
-
-            
-            double Em = tissue->getTissField("Em");
-            double Em0 = Em;
-            int n{};
-
-            // cell->getNodeField("x") += cell->getNodeField("vx");
-            // cell->getNodeField("y") += cell->getNodeField("vy");
-            // cell->getNodeField("z") += cell->getNodeField("vz");
-
-            do
-            {
-                eulerianNewtonRaphson->solve();
-
-                conv = eulerianNewtonRaphson->getConvergence();
-                n++;
-                if(conv != 1)
-                    tissue->getTissField("deltat") /= 2.0;
-                else 
-                {
-                    cell->getNodeField("x0") = cell->getNodeField("x");
-                    cell->getNodeField("y0") = cell->getNodeField("y");
-                    cell->getNodeField("z0") = cell->getNodeField("z");
-
-                    if(eulerianNewtonRaphson->getNumberOfIterations() <= 4 and tissue->getTissField("deltat") < 1.E0)
-                    tissue->getTissField("deltat") *= 2.0;
-
-                    Em0 = Em;
-                    Em = tissue->getTissField("Em");
-                }
-
-                cout << eulerianNewtonRaphson->getNumberOfIterations() << " " << tissue->getTissField("deltat") << " " << abs(Em-Em0)/abs(Em) << endl;
-
-            } while( (Em > 1.E-10 and (abs(Em-Em0) > 1.E-8*Em)) or conv != 1);
-
-            if(not conv)
-                break;
-        }
-    }
-
-    return conv;
-}
 
 #endif //aux_mzg_h
