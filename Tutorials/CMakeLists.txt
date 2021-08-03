@@ -1,5 +1,5 @@
 add_subdirectory(SingleCell)
 add_subdirectory(Doublet)
 add_subdirectory(TissueSimulation)
-add_subdirectory(postprocess)
+# add_subdirectory(postprocess)
 # add_subdirectory(LumenInflation)
