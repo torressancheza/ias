@@ -110,7 +110,7 @@ namespace ias
 
             if(not conv)
             {
-                if ( _integration->getTissue()->getMyPart()==0)
+                if ( _verbose and _integration->getTissue()->getMyPart()==0)
                 {
                     if (ierr == 1)
                     {
