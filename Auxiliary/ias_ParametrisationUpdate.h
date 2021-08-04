@@ -93,7 +93,7 @@ namespace ias
             Method _method = Method::Undefined;
 
             double _tfriction{1.E-2};
-            double _nfriction{1.E1};
+            double _nfriction{1.E2};
             double _viscosity{1.0};
             double _penaltyShear{1.0};
             double _penaltyStretch{1.E-1};

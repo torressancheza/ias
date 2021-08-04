@@ -61,7 +61,7 @@ namespace ias
 
                 RCP<Tissue> cellTissue = rcp(new Tissue(MPI_COMM_SELF));
                 cellTissue->addCellToTissue(cell);
-                cellTissue->setTissueFieldNames({"nElem","deltat","ale_penalty_shear","ale_penalty_stretch","ale_max_shear","ale_min_stretch","ale_max_stretch","tfriction","nfriction","viscosity","A","X","Y","Z","A0","X0","Y0","Z0","Em","LX","LY","LZ"});
+                cellTissue->setTissueFieldNames({"nElem","deltat","ale_penalty_shear","ale_penalty_stretch","ale_max_shear","ale_min_stretch","ale_max_stretch","tfriction","nfriction","viscosity","A","X","Y","Z","A0","X0","Y0","Z0","Em","LX","LY","LZ","Ixx","Ixy","Ixz","Iyy","Iyz","Izz"});
                 cellTissue->Update();
                 cellTissue->calculateCellCellAdjacency(1.0);
                 cellTissue->getTissField("deltat") = 1.E-2;
@@ -80,7 +80,7 @@ namespace ias
                 RCP<Integration> integration = rcp(new Integration);
                 integration->setTissue(cellTissue);
                 integration->setNodeDOFs({"x","y","z"});
-                integration->setTissIntegralFields({"A","X","Y","Z","A0","X0","Y0","Z0","Em","LX","LY","LZ"});
+                integration->setTissIntegralFields({"A","X","Y","Z","A0","X0","Y0","Z0","Em","LX","LY","LZ","Ixx","Ixy","Ixz","Iyy","Iyz","Izz"});
                 integration->setSingleIntegrand(_updateFunction);
                 integration->setNumberOfIntegrationPointsSingleIntegral(3); //TODO: make it a parameter to set
                 integration->setNumberOfIntegrationPointsDoubleIntegral(1);
@@ -135,10 +135,11 @@ namespace ias
         {
             using namespace Tensor;
 
-            std::vector<double> vMPI0(4,0.0), vMPI(4,0.0), lMPI(3, 0.0);
+            std::vector<double> vMPI0(4,0.0), vMPI(4,0.0), lMPI(3, 0.0), iMPI(6, 0.0);
             double &A0 = vMPI0[0], &X0 = vMPI0[1], &Y0 = vMPI0[2], &Z0 = vMPI0[3];
             double &A = vMPI[0], &X = vMPI[1], &Y = vMPI[2], &Z = vMPI[3];
             double &LX = lMPI[0], &LY = lMPI[1], &LZ = lMPI[2];
+            double &Ixx = iMPI[0], &Ixy = iMPI[1], &Ixz = iMPI[2], &Iyy = iMPI[3], &Iyz = iMPI[4], &Izz = iMPI[5];
             for(auto integration: _integrations)
             {
                 integration->InitialiseTissIntegralFields(0.0);
@@ -161,12 +162,20 @@ namespace ias
                 LY += integration->getTissue()->getTissField("LY");
                 LZ += integration->getTissue()->getTissField("LZ");
 
+                Ixx += integration->getTissue()->getTissField("Ixx");
+                Ixy += integration->getTissue()->getTissField("Ixy");
+                Ixz += integration->getTissue()->getTissField("Ixz");
+                Iyy += integration->getTissue()->getTissField("Iyy");
+                Iyz += integration->getTissue()->getTissField("Iyz");
+                Izz += integration->getTissue()->getTissField("Izz");
+
                 integration->setSingleIntegrand(_updateFunction);
             }
 
             MPI_Allreduce(MPI_IN_PLACE, vMPI0.data(), 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
             MPI_Allreduce(MPI_IN_PLACE, vMPI.data(), 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
             MPI_Allreduce(MPI_IN_PLACE, lMPI.data(), 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+            MPI_Allreduce(MPI_IN_PLACE, iMPI.data(), 6, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
             tensor<double,1> Xvec = {X/A, Y/A, Z/A};
             tensor<double,1> X0vec = {X0/A0, Y0/A0, Z0/A0};
@@ -174,6 +183,11 @@ namespace ias
             tensor<double,1> L = {LX, LY, LZ};
             L -= 0.5 * V * antisym3D * (Xvec+X0vec);
 
+            tensor<double,2> I = {{Ixx, Ixy, Ixz}, {Ixy, Iyy, Iyz}, {Ixz, Iyz, Izz}};
+            I += 0.5 * (A * ((Xvec*Xvec) * Identity(3) - outer(Xvec,Xvec)) + A0 * ((X0vec*X0vec) * Identity(3) - outer(X0vec,X0vec)));
+            tensor<double,1> omega = I.inv() * L;
+
+            cout << omega << endl;
             for(auto cell: _tissue->getLocalCells())
             {
 
@@ -192,11 +206,11 @@ namespace ias
                         tensor<double,1> v = {cell->getNodeField(_dispFieldNames[0])(i), cell->getNodeField(_dispFieldNames[1])(i), cell->getNodeField(_dispFieldNames[2])(i)};
                         tensor<double,1> x = x0+v;
 
-                        tensor<double,1> rot = L * antisym3D * (0.5*(x+x0)-Xvec);
+                        tensor<double,1> rot = omega * antisym3D * (0.5*(x+x0)-0.5*(Xvec+X0vec));
 
-                        cell->getNodeField(_dispFieldNames[0])(i) += rot(0);
-                        cell->getNodeField(_dispFieldNames[1])(i) += rot(1);
-                        cell->getNodeField(_dispFieldNames[2])(i) += rot(2);
+                        cell->getNodeField(_dispFieldNames[0])(i) -= rot(0);
+                        cell->getNodeField(_dispFieldNames[1])(i) -= rot(1);
+                        cell->getNodeField(_dispFieldNames[2])(i) -= rot(2);
                     }
                 }
             }
@@ -301,7 +315,7 @@ namespace ias
                                 x0(all,1) = cell->getNodeField("y");
                                 x0(all,2) = cell->getNodeField("z");
 
-                                if(newtonRaphson->getNumberOfIterations() <= 4)
+                                if(newtonRaphson->getNumberOfIterations() <= 4 and maxNorm < l/10)
                                     tissue->getTissField("deltat") *= stepFactor;
 
                                 if(maxNorm > l/10)
@@ -380,6 +394,13 @@ namespace ias
         fill->tissIntegrals(fill->idxTissIntegral("LY")) += L(1);
         fill->tissIntegrals(fill->idxTissIntegral("LZ")) += L(2);
 
+        tensor<double,2> I =  fill->w_sample * 0.5 * (jac * (outer(x,x) - (x*x) * Identity(3)) + jac0 * (outer(x0,x0) - (x0*x0) * Identity(3)));
+        fill->tissIntegrals(fill->idxTissIntegral("Ixx")) += I(0,0);
+        fill->tissIntegrals(fill->idxTissIntegral("Iyy")) += I(1,1);
+        fill->tissIntegrals(fill->idxTissIntegral("Izz")) += I(2,2);
+        fill->tissIntegrals(fill->idxTissIntegral("Ixy")) += I(0,1);
+        fill->tissIntegrals(fill->idxTissIntegral("Ixz")) += I(0,2);
+        fill->tissIntegrals(fill->idxTissIntegral("Iyz")) += I(1,2);
     }
 
     void ParametrisationUpdate::_eulerianUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill)
