@@ -642,8 +642,35 @@
                 inv._data[1] = -(*this)(0,1)*idet;
                 inv._data[2] = -(*this)(1,0)*idet;
             }
+            else if (_dims[0] == 3 and _dims[1] == 3)
+            {
+                // computes the inverse of a matrix m
+                double det = (*this)(0, 0) * ((*this)(1, 1) * (*this)(2, 2) - (*this)(2, 1) * (*this)(1, 2)) -
+                             (*this)(0, 1) * ((*this)(1, 0) * (*this)(2, 2) - (*this)(1, 2) * (*this)(2, 0)) +
+                             (*this)(0, 2) * ((*this)(1, 0) * (*this)(2, 1) - (*this)(1, 1) * (*this)(2, 0));
+
+                double invdet = 1 / det;
+
+                inv._dims[0] = 3;
+                inv._dims[1] = 3;
+                inv._jumps[0] = 3;
+                inv._jumps[1] = 1;
+                inv._storage = true;
+                inv._size = 9;
+                inv._data = new Type [9];
+
+                inv._data[0] = ((*this)(1, 1) * (*this)(2, 2) - (*this)(2, 1) * (*this)(1, 2)) * invdet;
+                inv._data[1] = ((*this)(0, 2) * (*this)(2, 1) - (*this)(0, 1) * (*this)(2, 2)) * invdet;
+                inv._data[2] = ((*this)(0, 1) * (*this)(1, 2) - (*this)(0, 2) * (*this)(1, 1)) * invdet;
+                inv._data[3] = ((*this)(1, 2) * (*this)(2, 0) - (*this)(1, 0) * (*this)(2, 2)) * invdet;
+                inv._data[4] = ((*this)(0, 0) * (*this)(2, 2) - (*this)(0, 2) * (*this)(2, 0)) * invdet;
+                inv._data[5] = ((*this)(1, 0) * (*this)(0, 2) - (*this)(0, 0) * (*this)(1, 2)) * invdet;
+                inv._data[6] = ((*this)(1, 0) * (*this)(2, 1) - (*this)(2, 0) * (*this)(1, 1)) * invdet;
+                inv._data[7] = ((*this)(2, 0) * (*this)(0, 1) - (*this)(0, 0) * (*this)(2, 1)) * invdet;
+                inv._data[8] = ((*this)(0, 0) * (*this)(1, 1) - (*this)(1, 0) * (*this)(0, 1)) * invdet;
+            }
             else
-                throw std::runtime_error("Tensor::det: Only programmed for 2x2 at the moment.");
+                throw std::runtime_error("Tensor::inv: Only programmed for 2x2 and 3x3 matrices at the moment.");
 
             return inv;
         }

@@ -31,10 +31,6 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     double viscosity = cellFields(fill->idxCellField("viscosity"));
     double frictiont = cellFields(fill->idxCellField("frictiont"));
     double frictionn = cellFields(fill->idxCellField("frictionn"));
-
-    tensor<double,3> voigt = {{{1.0,0.0},{0.0,0.0}},
-                              {{0.0,0.0},{0.0,1.0}},
-                              {{0.0,1.0},{1.0,0.0}}};
     
     int idx_x = fill->idxNodeField("x");
     int idx_z = fill->idxNodeField("z");
@@ -108,16 +104,6 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     double vn = v*normal0;
     tensor<double,1> vt = proj0 * v;
 
-    // fill->cellIntegrals(fill->idxCellIntegral("A")) += fill->w_sample * jac;
-    // fill->cellIntegrals(fill->idxCellIntegral("X")) += fill->w_sample * jac * x(0);
-    // fill->cellIntegrals(fill->idxCellIntegral("Y")) += fill->w_sample * jac * x(1);
-    // fill->cellIntegrals(fill->idxCellIntegral("Z")) += fill->w_sample * jac * x(2);
-    
-    // fill->cellIntegrals(fill->idxCellIntegral("A0")) += fill->w_sample * jac0;
-    // fill->cellIntegrals(fill->idxCellIntegral("X0")) += fill->w_sample * jac0 * x0(0);
-    // fill->cellIntegrals(fill->idxCellIntegral("Y0")) += fill->w_sample * jac0 * x0(1);
-    // fill->cellIntegrals(fill->idxCellIntegral("Z0")) += fill->w_sample * jac0 * x0(2);
-
     // [3.1] Friction dissipation
     rhs_n += fill->w_sample * frictiont * jac0 * outer(bfs,proj0*v);
     A_nn  += fill->w_sample * frictiont * jac0 * outer(bfs,outer(bfs,proj0)).transpose({0,2,1,3});
@@ -145,6 +131,10 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     bool higher_order = fill->bfs.size()>2;
     if(higher_order)
     {
+        tensor<double,3> voigt = {{{1.0,0.0},{0.0,0.0}},
+                                {{0.0,0.0},{0.0,1.0}},
+                                {{0.0,1.0},{1.0,0.0}}};
+
         double kappa     = cellFields(fill->idxCellField("kappa")) * deltat;
         tensor<double,2> DDbfs(fill->bfs[2].data(),eNN,3);
         tensor<double,2>    DDx = DDbfs.T() * (nborFields(all,range(idx_x,idx_z))+nborFields(all,range(idx_vx,idx_vz)));
