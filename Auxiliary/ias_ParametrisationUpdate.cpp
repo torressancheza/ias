@@ -301,8 +301,12 @@ namespace ias
                                 x0(all,1) = cell->getNodeField("y");
                                 x0(all,2) = cell->getNodeField("z");
 
-                                if(newtonRaphson->getNumberOfIterations() <= 4 and maxNorm < l)
+                                if(newtonRaphson->getNumberOfIterations() <= 4)
                                     tissue->getTissField("deltat") *= stepFactor;
+
+                                if(maxNorm > l/10)
+                                    tissue->getTissField("deltat") *= l/(10.0*maxNorm);
+
 
                                 res = newtonRaphson->getResiduals()[0]; //Forces in the first time-step of NR are only due to mesh distortion
                     
