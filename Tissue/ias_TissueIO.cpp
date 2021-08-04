@@ -20,7 +20,7 @@ namespace ias
         
         #pragma omp parallel for
         for(int i = 0; i < int(_cells.size()); i++)
-            _cells[i]->saveVTK(prefix+std::to_string(int(_cells[i]->getCellField("cellId")))+suffix+".vtu");
+            _cells[i]->saveVTK(prefix+std::to_string(int(_cells[i]->getCellField("cellId")+0.5))+suffix+".vtu");
 
         vector<int> cellLabels;
         for(auto c: _cells)
