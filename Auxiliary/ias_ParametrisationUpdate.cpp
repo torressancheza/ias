@@ -9,6 +9,9 @@
 
 #include <Teuchos_RCP.hpp>
 
+#include <vtkTransform.h>
+#include <vtkTransformFilter.h>
+
 #include "Tensor.h"
 
 #include "ias_ParametrisationUpdate.h"
@@ -186,8 +189,9 @@ namespace ias
             tensor<double,2> I = {{Ixx, Ixy, Ixz}, {Ixy, Iyy, Iyz}, {Ixz, Iyz, Izz}};
             I += 0.5 * (A * ((Xvec*Xvec) * Identity(3) - outer(Xvec,Xvec)) + A0 * ((X0vec*X0vec) * Identity(3) - outer(X0vec,X0vec)));
             tensor<double,1> omega = I.inv() * L;
+            double angle = sqrt(omega*omega);
+            tensor<double, 1> axis = omega/sqrt(omega*omega);
 
-            cout << omega << endl;
             for(auto cell: _tissue->getLocalCells())
             {
 
@@ -318,9 +322,8 @@ namespace ias
                                 if(newtonRaphson->getNumberOfIterations() <= 4 and maxNorm < l/10)
                                     tissue->getTissField("deltat") *= stepFactor;
 
-                                if(maxNorm > l/10)
+                                if(maxNorm > l/10) //FIXME: improve this...
                                     tissue->getTissField("deltat") *= l/(10.0*maxNorm);
-
 
                                 res = newtonRaphson->getResiduals()[0]; //Forces in the first time-step of NR are only due to mesh distortion
                     

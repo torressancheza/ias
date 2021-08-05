@@ -56,6 +56,8 @@ int main(int argc, char **argv)
     int    nr_maxite{5};
     double nr_restol{1.E-8};
     double nr_soltol{1.E-8};
+
+    int platonicSource{};
         
     string  fEnerName{"energies.txt"};
     ofstream fEner;
@@ -70,6 +72,7 @@ int main(int argc, char **argv)
         config.readInto(        R, "R");
 
         config.readInto(  nSubdiv, "nSubdiv");
+        config.readInto(  platonicSource, "platonicSource");
 
         config.readInto(    intEL, "intEL");
         config.readInto(    intCL, "intCL");
@@ -98,7 +101,8 @@ int main(int argc, char **argv)
                 
     }
     //---------------------------------------------------------------------------
-    
+
+
     RCP<Tissue> tissue;
     if(!restart)
     {
@@ -116,7 +120,7 @@ int main(int argc, char **argv)
         tissueGen->addTissFields({"time", "deltat"});
         tissueGen->addTissField("Ei");
 
-        tissue = tissueGen->genRegularGridSpheres(2, 1, 1, d, 0, 0, R, nSubdiv);
+        tissue = tissueGen->genRegularGridSpheres(2, 1, 1, d, 0, 0, R, nSubdiv, platonicSource);
         
         tissue->calculateCellCellAdjacency(3.0*intCL+intEL);
         tissue->updateGhosts();

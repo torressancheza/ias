@@ -57,7 +57,7 @@ namespace ias
         }
     }
 
-    Teuchos::RCP<Tissue> TissueGen::genRegularGridSpheres(int nx, int ny, int nz, double deltax, double deltay, double deltaz, double r, int nSubdiv)
+    Teuchos::RCP<Tissue> TissueGen::genRegularGridSpheres(int nx, int ny, int nz, double deltax, double deltay, double deltaz, double r, int nSubdiv, int type)
     {
         using namespace std;
         using namespace Tensor;
@@ -95,7 +95,7 @@ namespace ias
         loc_nCells = tissue->_nCellPart[tissue->getMyPart()];
 
         RCP<Cell> cell = rcp(new Cell);
-        cell->generateSphereFromPlatonicSolid(nSubdiv, r);
+        cell->generateSphereFromPlatonicSolid(nSubdiv, r, type);
         cell->setBasisFunctionType(_bfType);
         for(auto f: _nodeFieldNames)
             cell->addNodeField(f);
@@ -136,7 +136,7 @@ namespace ias
         return tissue;
     }
 
-    Teuchos::RCP<Tissue> TissueGen::genTripletSpheres(double r, double delta,int nSubdiv)
+    Teuchos::RCP<Tissue> TissueGen::genTripletSpheres(double r, double delta,int nSubdiv, int type)
     {
         //Generates triplet of cells of radius r, whose centers are the points of an equilateral triangle, and so that there
         //is a distance delta between the membranes of two neigbouring cells (distance 2r+delta beetween centers)
@@ -176,7 +176,7 @@ namespace ias
         loc_nCells = tissue->_nCellPart[tissue->getMyPart()];
 
         RCP<Cell> cell = rcp(new Cell);
-        cell->generateSphereFromPlatonicSolid(nSubdiv, r);
+        cell->generateSphereFromPlatonicSolid(nSubdiv, r, type);
         cell->setBasisFunctionType(_bfType);
         for(auto f: _nodeFieldNames)
             cell->addNodeField(f);
