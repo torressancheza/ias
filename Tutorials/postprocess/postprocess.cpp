@@ -78,37 +78,37 @@ int main(int argc, char **argv)
     physicsIntegration->setTissue(tissue);
     physicsIntegration->setNodeDOFs({"vx"});
     physicsIntegration->setCellIntegralFields(moments);
-    physicsIntegration->setSingleIntegrand(leastSquaresTension);
-    // physicsIntegration->setSingleIntegrand(calculateMoments);
-    physicsIntegration->setDoubleIntegrand(leastSquaresTensionInteraction);
+    // physicsIntegration->setSingleIntegrand(leastSquaresTension);
+    physicsIntegration->setSingleIntegrand(calculateMoments);
+    // physicsIntegration->setDoubleIntegrand(leastSquaresTensionInteraction);
     physicsIntegration->setNumberOfIntegrationPointsSingleIntegral(3);
     physicsIntegration->setNumberOfIntegrationPointsDoubleIntegral(1);
     physicsIntegration->setCellDOFsInInteractions(false);
     physicsIntegration->Update();
 
 
-    RCP<solvers::TrilinosAztecOO> physicsLinearSolver = rcp(new solvers::TrilinosAztecOO);
-    physicsLinearSolver->setIntegration(physicsIntegration);
-    physicsLinearSolver->addAztecOOParameter("solver","gmres");
-    physicsLinearSolver->addAztecOOParameter("precond","dom_decomp");
-    physicsLinearSolver->addAztecOOParameter("subdomain_solve","ilu");
-    physicsLinearSolver->addAztecOOParameter("output","none");
-    physicsLinearSolver->setMaximumNumberOfIterations(5000);
-    physicsLinearSolver->setResidueTolerance(1.E-8);
-    physicsLinearSolver->Update();
+    // RCP<solvers::TrilinosAztecOO> physicsLinearSolver = rcp(new solvers::TrilinosAztecOO);
+    // physicsLinearSolver->setIntegration(physicsIntegration);
+    // physicsLinearSolver->addAztecOOParameter("solver","gmres");
+    // physicsLinearSolver->addAztecOOParameter("precond","dom_decomp");
+    // physicsLinearSolver->addAztecOOParameter("subdomain_solve","ilu");
+    // physicsLinearSolver->addAztecOOParameter("output","none");
+    // physicsLinearSolver->setMaximumNumberOfIterations(5000);
+    // physicsLinearSolver->setResidueTolerance(1.E-8);
+    // physicsLinearSolver->Update();
 
-    physicsIntegration->computeSingleIntegral();
-    physicsIntegration->computeDoubleIntegral();
-    physicsIntegration->assemble();
-    physicsLinearSolver->solve();
-    physicsIntegration->setSolToDOFs();
+    // physicsIntegration->computeSingleIntegral();
+    // physicsIntegration->computeDoubleIntegral();
+    // physicsIntegration->assemble();
+    // physicsLinearSolver->solve();
+    // physicsIntegration->setSolToDOFs();
     
-    // physicsIntegration->InitialiseCellIntegralFields(0.0);
-    // physicsIntegration->computeSingleIntegral();
-    // physicsIntegration->assemble();
-    // physicsIntegration->InitialiseCellIntegralFields(0.0);
-    // physicsIntegration->computeSingleIntegral();
-    // physicsIntegration->assemble();
+    physicsIntegration->InitialiseCellIntegralFields(0.0);
+    physicsIntegration->computeSingleIntegral();
+    physicsIntegration->assemble();
+    physicsIntegration->InitialiseCellIntegralFields(0.0);
+    physicsIntegration->computeSingleIntegral();
+    physicsIntegration->assemble();
 
 
     tissue->saveVTK(outFileName,"");
