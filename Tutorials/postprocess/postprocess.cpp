@@ -55,7 +55,7 @@ int main(int argc, char **argv)
     tissue->updateGhosts();
     tissue->calculateInteractingElements(intEL+3.0*intCL);
 
-    std::vector<std::string> moments = {"M0", "M10", "M11", "M12", "M20", "M21", "M22", "M23", "M24"};
+    std::vector<std::string> moments = {"V", "M0", "M10", "M11", "M12", "M20", "M21", "M22", "M23", "M24"};
     for(auto cell: tissue->getLocalCells())
     {
         auto cellFieldnames = cell->getCellFieldNames();

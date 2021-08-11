@@ -162,6 +162,6 @@ void calculateMoments(Teuchos::RCP<ias::SingleIntegralStr> fill)
     fill->cellIntegrals(fill->idxCellIntegral("M24")) += w_sample * jac * x(1) * x(2);
 
     //Volume
-    fill->cellIntegrals(fill->idxCellIntegral("V")) += w_sample * jac * (x*normal)/3.0;
+    fill->cellIntegrals(fill->idxCellIntegral("V")) += w_sample * jac * xn/3.0;
 
 }
