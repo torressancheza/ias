@@ -72,6 +72,10 @@ namespace ias
                 /*! @brief Get residuals*/
                 std::vector<double> getResiduals()
                 {    return _ressError;    }
+
+                /*! @brief Get residuals*/
+                Teuchos::RCP<Solver> getLinearSolver()
+                {    return _linearSolver;    }
             
             private:
                 Teuchos::RCP<Solver> _linearSolver = Teuchos::null; ///<linear solver
