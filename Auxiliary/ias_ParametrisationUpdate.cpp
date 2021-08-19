@@ -284,6 +284,9 @@ namespace ias
                         linearSolver->getIntegration()->computeSingleIntegral();
                         linearSolver->getIntegration()->assemble();
                         linearSolver->solve();
+                        conv = linearSolver->getConvergence();
+                        if(conv)
+                            linearSolver->getIntegration()->setSolToDOFs();
                         integration->setSingleIntegrand(_arbLagEulUpdate);
 
                         // cell->getNodeField("x") += cell->getNodeField(_dispFieldNames[0]);
