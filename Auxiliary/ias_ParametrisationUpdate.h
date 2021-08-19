@@ -92,10 +92,10 @@ namespace ias
             Teuchos::RCP<Tissue> _tissue = Teuchos::null;
             Method _method = Method::Undefined;
 
-            double _tfriction{1.E-2};
+            double _tfriction{1.E0};
             double _nfriction{1.E3};
-            double _viscosity{1.0};
-            double _penaltyShear{1.0};
+            double _viscosity{1.E0}; //FIXME: delete it
+            double _penaltyShear{1.E0};
             double _penaltyStretch{1.E-1};
             double _maxShear{0.5};
             double _maxStretch{1.25};
@@ -106,6 +106,7 @@ namespace ias
             std::vector<Teuchos::RCP<solvers::TrilinosAztecOO>> _linearSolvers;
             std::vector<Teuchos::RCP<solvers::NewtonRaphson>> _newtonRaphsons;
             std::vector<Tensor::tensor<double,2>> _x0;
+            std::vector<Tensor::tensor<double,1>> _normalErr;
 
             bool _remove_RBT{};
             bool _remove_RBR{};

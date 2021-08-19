@@ -54,6 +54,7 @@ namespace ias
         _linearSolvers.clear();
         _newtonRaphsons.clear();
         _x0.clear();
+        _normalErr.clear();
 
         //Create the set of local tissues per cell (this is just to have a well-defined integration)
         if(_method != Method::Lagrangian or _remove_RBT or _remove_RBR)
@@ -61,6 +62,7 @@ namespace ias
             for(auto cell: _tissue->getLocalCells())
             {
                 _x0.push_back(Tensor::tensor<double,2>(cell->getNumberOfPoints(), 3));
+                _normalErr.push_back(Tensor::tensor<double,1>(cell->getNumberOfElements()));
 
                 RCP<Tissue> cellTissue = rcp(new Tissue(MPI_COMM_SELF));
                 cellTissue->addCellToTissue(cell);
@@ -90,6 +92,7 @@ namespace ias
                 integration->userAuxiliaryObjects.push_back(&_dispFieldNames);
                 integration->userAuxiliaryObjects.push_back(&(*cell));
                 integration->userAuxiliaryObjects.push_back(&_x0[_x0.size()-1]);
+                integration->userAuxiliaryObjects.push_back(&_normalErr[_normalErr.size()-1]);
                 integration->Update();
                 integration->computeSingleIntegral();
                 integration->assemble();
@@ -289,8 +292,9 @@ namespace ias
                         integration->getVector()->NormInf(&res);
                         int n{};
 
-                        while( res/tissue->getTissField("deltat") > 1.E-8 )                      
+                        while( res/tissue->getTissField("deltat") > 1.E-8)                      
                         {
+                            _normalErr[loc_idx] = 0.0;
                             newtonRaphson->solve();
  
                             conv = newtonRaphson->getConvergence();
@@ -298,7 +302,10 @@ namespace ias
                             {
                                 tissue->getTissField("deltat") /= stepFactor;
                                 if(tissue->getTissField("deltat") < 1.E-5)
+                                {
+                                    cout << tissue->getTissField("deltat") << endl;
                                     break;
+                                }
                             }
                             else 
                             {
@@ -315,15 +322,26 @@ namespace ias
                                         maxNorm = norm;
                                 }
 
+                                double maxErr = 0.0;
+                                for(int e = 0; e < cell->getNumberOfElements(); e++)
+                                {
+                                    if(_normalErr[loc_idx](e) > maxErr)
+                                        maxErr = _normalErr[loc_idx](e);
+                                }
+
+
                                 x0(all,0) = cell->getNodeField("x");
                                 x0(all,1) = cell->getNodeField("y");
                                 x0(all,2) = cell->getNodeField("z");
 
-                                if(newtonRaphson->getNumberOfIterations() <= 4 and maxNorm < l/10)
+                                // if(newtonRaphson->getNumberOfIterations() <= 4 and maxNorm < l/10 and maxErr < 1.E-7)
+                                if(newtonRaphson->getNumberOfIterations() <= 4 and maxNorm < l/10 )
                                     tissue->getTissField("deltat") *= stepFactor;
 
                                 if(maxNorm > l/10) //FIXME: improve this...
                                     tissue->getTissField("deltat") *= l/(10.0*maxNorm);
+                                // if(maxErr < 1.E-7)
+                                //     tissue->getTissField("deltat") *= 1.E-7/maxErr;
 
                                 res = newtonRaphson->getResiduals()[0]; //Forces in the first time-step of NR are only due to mesh distortion
                     
@@ -492,6 +510,8 @@ namespace ias
         std::vector<std::string>* velFieldNames = static_cast<std::vector<std::string>*>(fill->userAuxiliaryObjects[0]);
         Cell* cell = static_cast<Cell*>(fill->userAuxiliaryObjects[1]);
         tensor<double,2>* x0Nodes = static_cast<tensor<double,2>*>(fill->userAuxiliaryObjects[2]);
+        tensor<double,1>* normalErr = static_cast<tensor<double,1>*>(fill->userAuxiliaryObjects[3]);
+
         int elemID = fill->elemID;
 
         tensor<double,2> nborx0(eNN,3);
@@ -526,66 +546,72 @@ namespace ias
         tensor<double,1> normal = cross/jac;
         tensor<double,2> metric = Dx * Dx.T();
         tensor<double,2> imetric = metric.inv();
-        tensor<double,2> curva  = (DDx * normal) * voigt;
-        double H = product(curva,imetric,{{0,0},{1,1}});
+
+
+        //Linear interpolation
+        tensor<double,1> bfs_l = {1.0/3.0, 1.0/3.0, 1.0/3.0};
+        tensor<double,2> Dbfs_l = {{-1.0, -1.0}, {1.0, 0.0}, {0.0, 1.0}};
+        array<int,3> idx = {0,1,eNN-6}; //FIXME: this only works for subdivision surfaces
+
+        tensor<double,2> nborFields_l(3,3);
+        for(int i = 0; i < 3; i++)
+            nborFields_l(i,all) = nborFields(idx[i],range(idx_x,idx_z));
+         
+        tensor<double,1>      x_l = bfs_l * nborFields_l;
+        tensor<double,2>     Dx_l = Dbfs_l.T() * nborFields_l;
+        tensor<double,1>  cross_l = Dx_l(1,all) * antisym3D * Dx_l(0,all);
+        double              jac_l = sqrt(cross_l*cross_l);
+        tensor<double,2> metric_l = Dx_l * Dx_l.T();
+        tensor<double,2> imetric_l = metric_l.inv();
 
         //[2.4] First-order derivatives of geometric quantities wrt nodal positions
-        tensor<double,4> dDx        = outer(Dbfs,Identity(3)).transpose({0,2,1,3});
-        tensor<double,3> dcross     = dDx(all,all,1,all)*antisym3D*Dx(0,all) - dDx(all,all,0,all)*antisym3D*Dx(1,all);
-        tensor<double,2> djac       = 1./jac * dcross * cross;
-        tensor<double,4> dmetric    = dDx * Dx.T();
-                        dmetric   += dmetric.transpose({0,1,3,2});
-        tensor<double,4> dmetric_C0C0 = product(product(dmetric,imetric0,{{2,0}}),imetric0,{{2,0}});
-        tensor<double,4> dmetric_CC = product(product(dmetric,imetric,{{2,0}}),imetric,{{2,0}});
-        tensor<double,3> dnormal    = dcross/jac - outer(djac/(jac*jac),cross);
+        tensor<double,4> dDx_l        = outer(Dbfs_l,Identity(3)).transpose({0,2,1,3});
+        tensor<double,3> dcross_l     = dDx_l(all,all,1,all)*antisym3D*Dx_l(0,all) - dDx_l(all,all,0,all)*antisym3D*Dx_l(1,all);
+        tensor<double,2> djac_l       = 1./jac_l * dcross_l * cross_l;
+        tensor<double,4> dmetric_l    = dDx_l * Dx_l.T();
+                        dmetric_l   += dmetric_l.transpose({0,1,3,2});
+        tensor<double,4> dmetric_l_CC = product(product(dmetric_l,imetric_l,{{2,0}}),imetric_l,{{2,0}});
+        tensor<double,3> dnormal_l    = dcross_l/jac_l - outer(djac_l/(jac_l*jac_l),cross_l);
 
-        tensor<double,4> dmetric_par = dmetric + 2. * outer(bfs,outer(normal,curva));
-        tensor<double,2> djac_par  = djac + jac * H * outer(bfs,normal);
-        
         //[2.5] Second-order derivatives of geometric quantities wrt nodal positions
-        tensor<double,5> ddcross    = (dDx(all,all,1,all)*antisym3D*dDx(all,all,0,all).transpose({2,0,1})).transpose({0,1,3,4,2});
-                        ddcross  += ddcross.transpose({2,3,0,1,4});
-        tensor<double,4> ddjac      = 1./jac * (ddcross * cross + product(dcross,dcross,{{2,2}}) - outer(djac,djac));
-        tensor<double,5> ddnormal   = ddcross/jac - outer(dcross,djac/(jac*jac)).transpose({0,1,3,4,2}) - outer(djac/(jac*jac),dcross) - outer(ddjac/(jac*jac),cross) + 2.0/(jac*jac*jac) * outer(outer(djac,djac),cross);
-        tensor<double,6> ddmetric   = 2.0 * product(dDx,dDx,{{3,3}}).transpose({0,1,3,4,2,5});
+        tensor<double,5> ddcross_l    = (dDx_l(all,all,1,all)*antisym3D*dDx_l(all,all,0,all).transpose({2,0,1})).transpose({0,1,3,4,2});
+                        ddcross_l  += ddcross_l.transpose({2,3,0,1,4});
+        tensor<double,4> ddjac_l      = 1./jac_l * (ddcross_l * cross_l + product(dcross_l,dcross_l,{{2,2}}) - outer(djac_l,djac_l));
+        tensor<double,5> ddnormal_l   = ddcross_l/jac_l - outer(dcross_l,djac_l/(jac_l*jac_l)).transpose({0,1,3,4,2}) - outer(djac_l/(jac_l*jac_l),dcross_l) - outer(ddjac_l/(jac_l*jac_l),cross_l) + 2.0/(jac_l*jac_l*jac_l) * outer(outer(djac_l,djac_l),cross_l);
+        tensor<double,6> ddmetric_l   = 2.0 * product(dDx_l,dDx_l,{{3,3}}).transpose({0,1,3,4,2,5});
 
 
-        tensor<double,4> dDDx       = outer(DDbfs,Identity(3)).transpose({0,2,1,3});
-        tensor<double,4> dcurva     = (dDDx * normal) * voigt + (dnormal * DDx.T()) * voigt;
-        tensor<double,2> dH         = product(dcurva,imetric,{{2,0},{3,1}}) - product(dmetric_CC,curva,{{2,0},{3,1}});
-        tensor<double,6> ddmetric_par = ddmetric + 2.*outer(bfs,outer(dnormal,curva)).transpose({0,3,1,2,4,5}) + 2.*outer(bfs,outer(normal,dcurva));
-        tensor<double,4> ddjac_par  = ddjac + jac * H * outer(bfs,dnormal).transpose({0,3,1,2}) + jac * outer(outer(bfs,normal),dH) + H * outer(outer(bfs,normal),djac);
-        
-        tensor<double,2>     DxR = {{1.0, 0.0}, {cos(M_PI/3.0), sin(M_PI/3.0)}};
-        DxR *= sqrt(4.0/sqrt(3)*A/nElem);// / sqrt(c1_0*c1_0+c2_0*c2_0);
+        double angle = 2.*(M_PI)/(eNN-6); //FIXME: this only works for subdivision surfaces +K0*jac0
+        tensor<double,2> DxR = {{1.0, 0.0}, {cos(angle), sin(angle)}};
+        DxR *= sqrt(2.0*A/nElem/sin(angle));// / sqrt(c1_0*c1_0+c2_0*c2_0);
         tensor<double,2> metricR = DxR * DxR.T();
         double jacR = sqrt(metricR.det());
         tensor<double,2> imetricR = metricR.inv();
-        double J = jac/jacR;
-        double I1 = product(imetricR, metric,{{0,0},{1,1}});
+        double J = jac_l/jacR;
+        double I1 = product(imetricR, metric_l,{{0,0},{1,1}});
         double shear = 1.0-4.0*(J*J)/(I1*I1) > 0 ? sqrt(1.0-4.0*(J*J)/(I1*I1)) : 0.0;
 
         double energy{};
-        tensor<double,2>& rhs_n = fill->vec_n;
-        tensor<double,4>& A_nn  = fill->mat_nn;
+        tensor<double,2> rhs_l(3,3);
+        tensor<double,4> A_l(3,3,3,3);
 
+        rhs_l = 0.0;
+        A_l = 0.0;
         double shear_factor_rhs{0.0};
         double shear_factor_matrix{0.0};
         if(shear > ale_max_shear)
-        {
-            tensor<double,2> dI1 = product(imetricR,dmetric,{{0,2},{1,3}});
-            tensor<double,2> dI1_par = product(imetricR,dmetric_par,{{0,2},{1,3}});
-            tensor<double,4> ddI1_par = product(imetricR,ddmetric_par,{{0,4},{1,5}});
-            tensor<double,2> dshear = 4.0/shear * ((J*J)/(I1*I1*I1) * dI1 - (J/jacR/(I1*I1)) * djac);
-            tensor<double,2> dshear_par = 4.0/shear * ((J*J)/(I1*I1*I1) * dI1_par - (J/jacR/(I1*I1)) * djac_par);
-            tensor<double,4> ddshear_par = 4.0/shear * (-3.0 * (J*J)/(I1*I1*I1*I1) * outer(dI1_par,dI1) + (J*J)/(I1*I1*I1) * ddI1_par + 2.0 * (J/jacR/(I1*I1*I1)) * (outer(djac_par,dI1)+outer(dI1_par,djac)) - (1./(jacR*jacR)/(I1*I1)) * outer(djac_par,djac) - (J/jacR/(I1*I1)) * ddjac_par) - (1./shear) * outer(dshear_par,dshear);
+        {            
+            tensor<double,2> dI1 = product(imetricR,dmetric_l,{{0,2},{1,3}});
+            tensor<double,4> ddI1 = product(imetricR,ddmetric_l,{{0,4},{1,5}});
+            tensor<double,2> dshear = 4.0/shear * ((J*J)/(I1*I1*I1) * dI1 - (J/jacR/(I1*I1)) * djac_l);
+            tensor<double,4> ddshear = 4.0/shear * (-3.0 * (J*J)/(I1*I1*I1*I1) * outer(dI1,dI1) + (J*J)/(I1*I1*I1) * ddI1 + 2.0 * (J/jacR/(I1*I1*I1)) * (outer(djac_l,dI1)+outer(dI1,djac_l)) - (1./(jacR*jacR)/(I1*I1)) * outer(djac_l,djac_l) - (J/jacR/(I1*I1)) * ddjac_l) - (1./shear) * outer(dshear,dshear);
             
             shear_factor_rhs = (shear-ale_max_shear) * (shear-ale_max_shear) / 3.0;
             shear_factor_matrix = 2.0 * (shear-ale_max_shear) / 3.0;
             energy += fill->w_sample * ale_penalty_shear * jacR * (shear-ale_max_shear) * (shear-ale_max_shear) * (shear-ale_max_shear)/deltat;
-            rhs_n += fill->w_sample * ale_penalty_shear * jacR * shear_factor_rhs * dshear_par; 
-            A_nn  += fill->w_sample * ale_penalty_shear * jacR * shear_factor_rhs * ddshear_par;
-            A_nn  += fill->w_sample * ale_penalty_shear * jacR * shear_factor_matrix * outer(dshear_par, dshear);
+            rhs_l += fill->w_sample * ale_penalty_shear * jacR * shear_factor_rhs * dshear; 
+            A_l  += fill->w_sample * ale_penalty_shear * jacR * shear_factor_rhs * ddshear;
+            A_l  += fill->w_sample * ale_penalty_shear * jacR * shear_factor_matrix * outer(dshear, dshear);
         }
 
         double jac_factor_rhs{0.0};
@@ -603,21 +629,30 @@ namespace ias
             energy += fill->w_sample * jacR * ale_penalty_stretch * (J-ale_max_stretch) * (J-ale_max_stretch) * (J-ale_max_stretch)/deltat/3.0;
         }
 
-        rhs_n += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_rhs * djac_par;
-        A_nn  += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_rhs * ddjac_par;
-        A_nn  += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_matrix * outer(djac_par/jacR,djac);
+        rhs_l += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_rhs * djac_l;
+        A_l  += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_rhs * ddjac_l;
+        A_l  += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_matrix * outer(djac_l/jacR,djac_l);
 
+
+        tensor<double,2>& rhs_n = fill->vec_n;
+        tensor<double,4>& A_nn  = fill->mat_nn;
+        for(int i1 = 0; i1 < 3; i1++)
+        {
+            for(int i2 = 0; i2 < 3; i2++)
+                A_nn(idx[i1],all,idx[i2],all) += A_l(i1,all,i2,all);
+
+            rhs_n(idx[i1],all) += rhs_l(i1,all);
+        }
         tensor<double,2> proj0 = Identity(3);
-        proj0 -= outer(normal0,normal0);
-
-        rhs_n += viscosity * fill->w_sample * jac0 * product(imetric0*(metric-metric0)*imetric0, dmetric_par,{{0,2},{1,3}});
-        A_nn  += viscosity * fill->w_sample * jac0 * (product(imetric0*(metric-metric0)*imetric0, ddmetric_par,{{0,4},{1,5}}) + product(dmetric_par, dmetric_C0C0,{{2,2},{3,3}}));
+        proj0 -= outer(normal0,normal0);        
 
         rhs_n += tfriction * fill->w_sample * jac0 * outer(bfs, (x-x0) * proj0);
         A_nn  += tfriction * fill->w_sample * jac0 * outer(outer(bfs, bfs), proj0).transpose({0,2,1,3});
 
         rhs_n += nfriction * fill->w_sample * jac0 * outer(bfs,((x-x0)*normal0)*normal0);
         A_nn  += nfriction * fill->w_sample * jac0 * outer(outer(bfs,bfs),outer(normal0,normal0)).transpose({0,2,1,3});
+
+        (*normalErr)(elemID) += fill->w_sample * jac0 * abs((x-x0)*normal0) ;
 
         fill->tissIntegrals(fill->idxTissIntegral("A")) += fill->w_sample * jac;
         fill->tissIntegrals(fill->idxTissIntegral("A0")) += fill->w_sample * jac0;
