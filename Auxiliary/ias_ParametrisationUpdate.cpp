@@ -278,6 +278,10 @@ namespace ias
                         integration->setSingleIntegrand(_eulerianUpdate);
                         linearSolver->getIntegration()->InitialiseTissIntegralFields(0.0);
                         linearSolver->getIntegration()->InitialiseCellIntegralFields(0.0);
+                        linearSolver->getIntegration()->computeSingleIntegral();
+                        linearSolver->getIntegration()->assemble();
+                        linearSolver->getIntegration()->InitialiseTissIntegralFields(0.0);
+                        linearSolver->getIntegration()->InitialiseCellIntegralFields(0.0);
                         linearSolver->getIntegration()->fillVectorWithScalar(0.0);
                         linearSolver->getIntegration()->fillSolutionWithScalar(0.0);
                         linearSolver->getIntegration()->fillMatrixWithScalar(0.0);
