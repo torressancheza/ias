@@ -263,20 +263,35 @@ namespace ias
                 {
                     using namespace Tensor;
 
+
                     double stepFactor = 1.1;
                     int loc_idx{};
                     for(auto newtonRaphson: _newtonRaphsons)
                     {
+                        auto linearSolver = newtonRaphson->getLinearSolver();
                         auto integration = newtonRaphson->getIntegration();
                         auto tissue = integration->getTissue();
                         auto cell = tissue->getLocalCells()[0];
                         auto& x0 = _x0[loc_idx];
 
-                        cell->getNodeField("x") += cell->getNodeField(_dispFieldNames[0]);
-                        cell->getNodeField("y") += cell->getNodeField(_dispFieldNames[1]);
-                        cell->getNodeField("z") += cell->getNodeField(_dispFieldNames[2]);
-                        tissue->getTissField("A0") = tissue->getTissField("A");
+                    
+                        integration->setSingleIntegrand(_eulerianUpdate);
+                        linearSolver->getIntegration()->InitialiseTissIntegralFields(0.0);
+                        linearSolver->getIntegration()->InitialiseCellIntegralFields(0.0);
+                        linearSolver->getIntegration()->fillVectorWithScalar(0.0);
+                        linearSolver->getIntegration()->fillSolutionWithScalar(0.0);
+                        linearSolver->getIntegration()->fillMatrixWithScalar(0.0);
+                        linearSolver->getIntegration()->computeSingleIntegral();
+                        linearSolver->getIntegration()->assemble();
+                        linearSolver->solve();
+                        integration->setSingleIntegrand(_arbLagEulUpdate);
 
+                        // cell->getNodeField("x") += cell->getNodeField(_dispFieldNames[0]);
+                        // cell->getNodeField("y") += cell->getNodeField(_dispFieldNames[1]);
+                        // cell->getNodeField("z") += cell->getNodeField(_dispFieldNames[2]);
+                        // tissue->getTissField("A0") = tissue->getTissField("A");
+
+                    
                         x0(all,0) = cell->getNodeField("x");
                         x0(all,1) = cell->getNodeField("y");
                         x0(all,2) = cell->getNodeField("z");
@@ -284,7 +299,7 @@ namespace ias
                         double nElem = tissue->getTissField("nElem");
                         double A  = tissue->getTissField("A0");
                         double l = sqrt(4.0/sqrt(3)*A/nElem);
-
+                                                
                         integration->fillVectorWithScalar(0.0);
                         integration->computeSingleIntegral();
                         integration->assemble();
