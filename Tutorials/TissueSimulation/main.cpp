@@ -24,21 +24,22 @@ int main(int argc, char **argv)
     using namespace ias;
     using Teuchos::RCP;
     using Teuchos::rcp;
-        
+
     MPI_Init(&argc, &argv);
-    
+
     //---------------------------------------------------------------------------
     // [0] Input parameters
     //---------------------------------------------------------------------------
-    double R{1.0};
-    int nSubdiv{3};
-    
+    double R{10.0};
+    int nSubdivcell{3};
+    int nSubdivSph{3};
+
     //prefix of where to save cells
     string prefix_save="Cell";
 
     bool restart{false};
-    string resLocation{};//="/Users/vagne/work/geneva/interacting_active_surfaces/ias_exec/bin/";
-    string resFileName{};//="Cell_t32";
+    string resLocation="../";
+    string resFileName="Cell_t343";
 
     double     intEL = 1.E-1;
     double     intCL = 5.E-2;
@@ -48,7 +49,7 @@ int main(int argc, char **argv)
     double viscosity = 1.E0;
     double frictiont = 1.E-1;
     double frictionn = 1.E-1;
-    
+
     double kConfin = 0.E3;
     double dConfinX = 0.0;
     double dConfinY = 0.0;
@@ -69,11 +70,11 @@ int main(int argc, char **argv)
     int    nr_maxite{5};
     double nr_restol{1.E-8};
     double nr_soltol{1.E-8};
-        
+
     string  fEnerName{"energies.txt"};
     string  updateMethod{"eulerian"};
     ofstream fEner;
-    
+
     if(argc == 2)
     {
         const char *config_filename = argv[1];
@@ -92,7 +93,8 @@ int main(int argc, char **argv)
 
         config.readInto(        R, "R");
 
-        config.readInto(  nSubdiv, "nSubdiv");
+        config.readInto(  nSubdivcell, "nSubdivcell");
+        config.readInto(  nSubdivSph, "nSubdivSph");
 
         config.readInto(    intEL, "intEL");
         config.readInto(    intCL, "intCL");
@@ -102,7 +104,7 @@ int main(int argc, char **argv)
         config.readInto(viscosity, "viscosity");
         config.readInto(frictiont, "frictiont");
         config.readInto(frictionn, "frictionn");
-        
+
         config.readInto( lifetime, "lifetime");
 
         config.readInto(  totTime,   "totTime");
@@ -115,24 +117,24 @@ int main(int argc, char **argv)
         config.readInto(nr_soltol, "nr_soltol");
 
         config.readInto(fEnerName, "fEnerName");
-        
+
         config.readInto(restart, "restart");
         config.readInto(resLocation, "resLocation");
         config.readInto(resFileName, "resFileName");
-        
+
         config.readInto(updateMethod, "updateMethod");
-        
+
         if(updateMethod.compare("eulerian")!=0 and updateMethod.compare("ale") != 0)
             throw runtime_error("Update method not understood. It should be either \"eulerian\" or \"ALE\"");
     }
     //---------------------------------------------------------------------------
-    
+
     RCP<Tissue> tissue;
     if(!restart)
     {
         RCP<TissueGen> tissueGen = rcp( new TissueGen);
         tissueGen->setBasisFunctionType(BasisFunctionType::LoopSubdivision);
-        
+
         tissueGen->addNodeFields({"vx","vy","vz"});
         tissueGen->addNodeFields({"x0","y0","z0"});
         tissueGen->addNodeFields({"vx0","vy0","vz0"});
@@ -146,7 +148,7 @@ int main(int argc, char **argv)
         tissueGen->addCellFields({"AR"});
 
         tissueGen->addCellFields({"intEL","intCL","intSt","tension","kappa","viscosity","frictiont","frictionn"});
-        
+
         tissueGen->addTissField("time");
         tissueGen->addTissField("deltat");
 
@@ -155,14 +157,18 @@ int main(int argc, char **argv)
         tissueGen->addTissFields({"dConfinX", "dConfinY", "dConfinZ"});
         tissueGen->addTissFields({"cConfinX", "cConfinY", "cConfinZ"});
 
-        tissue = tissueGen->genTripletSpheres(R,intEL,nSubdiv);
-
+        cout << "Generating tissue." << endl; fflush(stdout);
+        tissue = tissueGen->genSpheroid(R,intEL,nSubdivcell,VTK_SOLID_ICOSAHEDRON,nSubdivSph);
+        cout << "calculateCellCellAdjacency." << endl; fflush(stdout);
         tissue->calculateCellCellAdjacency(3.0*intCL+intEL);
+        cout << "updateGhosts." << endl; fflush(stdout);
         tissue->updateGhosts();
+        cout << "balanceDistribution." << endl; fflush(stdout);
         tissue->balanceDistribution();
-        
+        cout << "calculateInteractingElements... "; fflush(stdout);
         tissue->calculateInteractingElements(intEL+3.0*intCL);
-        
+        cout << "done" << endl; fflush(stdout);
+
         tissue->getTissField("time") = 0.0;
         tissue->getTissField("deltat") = deltat;
         tissue->getTissField("kConfin") = kConfin;
@@ -178,14 +184,7 @@ int main(int argc, char **argv)
         {
             cell->getCellField("intEL") = intEL;
             cell->getCellField("intCL") = intCL;
-            if(cell->getCellField("cellId")==0) //different interaction strength for different cells
-            {
-                cell->getCellField("intSt") = 2*intSt;
-            }
-            else
-            {
-                cell->getCellField("intSt") = intSt;
-            }
+            cell->getCellField("intSt") = intSt;
             cell->getCellField("kappa") = kappa;
             cell->getCellField("tension") = tension;
             cell->getCellField("viscosity") = viscosity;
@@ -193,12 +192,6 @@ int main(int argc, char **argv)
             cell->getCellField("frictionn") = frictionn;
         }
         tissue->saveVTK(prefix_save,"_t"+to_string(0));
-
-        for(auto cell: tissue->getLocalCells())
-        {
-            cout << "cell ID: " << cell->getCellField("cellId");
-            cout << " cell interaction strength " << cell->getCellField("intSt")  << endl;
-        }
     }
     else
     {
@@ -209,9 +202,9 @@ int main(int argc, char **argv)
         tissue->balanceDistribution();
         tissue->updateGhosts();
         tissue->calculateInteractingElements(intEL+3.0*intCL);
-        
+
         deltat = tissue->getTissField("deltat");
-        
+
         for(auto cell: tissue->getLocalCells())
         {
             cell->getNodeField("vx") *= 0.0;
@@ -219,9 +212,14 @@ int main(int argc, char **argv)
             cell->getNodeField("vz") *= 0.0;
         }
     }
-        
-    tissue->saveVTK(prefix_save,"_t"+to_string(1));
 
+    RCP<ParametrisationUpdate> paramUpdate = rcp(new ParametrisationUpdate);
+    paramUpdate->setTissue(tissue);
+    paramUpdate->setMethod(ParametrisationUpdate::Method::Eulerian);
+    paramUpdate->setRemoveRigidBodyTranslation(true);
+    paramUpdate->setRemoveRigidBodyRotation(true);
+    paramUpdate->setDisplacementFieldNames({"vx","vy","vz"});
+    paramUpdate->Update();
 
     //FIXME: create a class for this so that the user doesn't need to see this
     vector<RCP<Tissue>> serialTissues;
@@ -242,7 +240,7 @@ int main(int argc, char **argv)
         cellTissue->getTissField("nElem") = cell->getNumberOfElements();
         serialTissues.push_back(cellTissue);
     }
-    
+
     RCP<Integration> physicsIntegration = rcp(new Integration);
     physicsIntegration->setTissue(tissue);
     physicsIntegration->setNodeDOFs({"vx","vy","vz"});
@@ -264,7 +262,7 @@ int main(int argc, char **argv)
     physicsLinearSolver->setMaximumNumberOfIterations(5000);
     physicsLinearSolver->setResidueTolerance(1.E-8);
     physicsLinearSolver->Update();
-    
+
     RCP<solvers::NewtonRaphson> physicsNewtonRaphson = rcp(new solvers::NewtonRaphson);
     physicsNewtonRaphson->setLinearSolver(physicsLinearSolver);
     physicsNewtonRaphson->setSolutionTolerance(1.E-8);
@@ -272,7 +270,7 @@ int main(int argc, char **argv)
     physicsNewtonRaphson->setMaximumNumberOfIterations(5);
     physicsNewtonRaphson->setVerbosity(true);
     physicsNewtonRaphson->Update();
-    
+
     vector<RCP<Integration>> eulerianIntegrations;
     vector<RCP<solvers::TrilinosAztecOO>> eulerianLinearSolvers;
     vector<RCP<solvers::NewtonRaphson>> eulerianNewtonRaphsons;
@@ -320,7 +318,7 @@ int main(int argc, char **argv)
 
     fEner.open (fEnerName);
     fEner.close();
-    
+
     physicsIntegration->computeSingleIntegral();
     for(auto cell: tissue->getLocalCells())
     {
@@ -332,6 +330,8 @@ int main(int argc, char **argv)
 
     int conv{};
     bool rec_str{};
+    int n_nochange=0; //number of time in a row that dt does not change
+    int n_nochangeMax=10; //Maximum before we try to put velocities to zero.
     while(time < totTime)
     {
         auto start = std::chrono::high_resolution_clock::now();
@@ -341,15 +341,16 @@ int main(int argc, char **argv)
             cell->getNodeField("x0")  = cell->getNodeField("x");
             cell->getNodeField("y0")  = cell->getNodeField("y");
             cell->getNodeField("z0")  = cell->getNodeField("z");
+
             cell->getNodeField("vx0") = cell->getNodeField("vx");
             cell->getNodeField("vy0") = cell->getNodeField("vy");
             cell->getNodeField("vz0") = cell->getNodeField("vz");
-            
+
             cell->getCellField("P0")    = cell->getCellField("P");
             cell->getCellField("Paux0") = cell->getCellField("Paux");
         }
         tissue->updateGhosts();
-        
+
         auto finish_1 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_1 = finish_1 - start;
 
@@ -361,38 +362,55 @@ int main(int argc, char **argv)
             physicsLinearSolver->DestroyPreconditioner();
             rec_str = false;
         }
-        
+        //if n_nochangeMax iterations have happened without change in deltat,
+        //we destroy the preconditioner and recalculate the matrix structure and
+        //put velocities to zero
+        if(n_nochange >= n_nochangeMax)
+        {
+            n_nochange=0;
+            if(tissue->getMyPart()==0)
+                cout << "Restarting solver because no change in deltat for a while." << endl;
+            for(auto cell: tissue->getLocalCells())
+            {
+                cell->getNodeField("vx") *= 0.0;
+                cell->getNodeField("vy") *= 0.0;
+                cell->getNodeField("vz") *= 0.0;
+            }
+            physicsIntegration->recalculateMatrixStructure();
+            physicsLinearSolver->DestroyPreconditioner();
+            rec_str = false;
+        }
         auto finish_2 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_2 = finish_2 - finish_1;
-        
+
         if(tissue->getMyPart()==0)
             cout << "Step " << step << ", time=" << time << ", deltat=" << deltat << endl;
 
-        
+
         if(tissue->getMyPart()==0)
             cout << "Solving for velocities" << endl;
-        
+
         physicsNewtonRaphson->solve();
         conv = physicsNewtonRaphson->getConvergence();
-        
+
         auto finish_3 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_3 = finish_3 - finish_2;
-        
+
         auto finish_4 = std::chrono::high_resolution_clock::now();
         auto finish_4_2 = std::chrono::high_resolution_clock::now();
 
         if ( conv )
         {
             int nIter = physicsNewtonRaphson->getNumberOfIterations();
-            
+
             if(tissue->getMyPart()==0)
                 cout << "Solving for displacement with " << updateMethod  << endl;
 
             conv = UpdateMeshes(eulerianNewtonRaphsons, updateMethod);
-            
+
             MPI_Allreduce(MPI_IN_PLACE, &conv, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
             finish_4 = std::chrono::high_resolution_clock::now();
-            
+
             if (conv)
             {
                 if(tissue->getMyPart()==0)
@@ -403,7 +421,7 @@ int main(int argc, char **argv)
                 //     cell->getNodeField("y") += cell->getCellField("Y")/cell->getCellField("A") - cell->getCellField("Y0")/cell->getCellField("A0");
                 //     cell->getNodeField("z") += cell->getCellField("Z")/cell->getCellField("A") - cell->getCellField("Z0")/cell->getCellField("A0");
                 // }
-                
+
                 time += deltat;
                 tissue->getTissField("time") = time;
                 tissue->getTissField("tConfin") += dt_tConfin * deltat;
@@ -431,6 +449,25 @@ int main(int argc, char **argv)
                         cell->getNodeField("vy") /= stepFac;
                         cell->getNodeField("vz") /= stepFac;
                     }
+                    n_nochange=0;
+                }
+                else if(nIter==nr_maxite)
+                {
+                    deltat *= stepFac;
+                    for(auto cell: tissue->getLocalCells())
+                    {
+                        cell->getNodeField("vx") *= stepFac;
+                        cell->getNodeField("vy") *= stepFac;
+                        cell->getNodeField("vz") *= stepFac;
+                    }
+                    n_nochange=0;
+                }
+                else
+                {
+                    //if deltat has not been modified, increase counter
+                    n_nochange++;
+                    if(tissue->getMyPart()==0)
+                        cout << "deltat not modified since " << n_nochange << " iterations."  << endl;
                 }
                 else if(nIter==nr_maxite)
                 {
@@ -451,7 +488,7 @@ int main(int argc, char **argv)
             else
             {
                 cout << "failed!" << endl;
-                deltat *= 2*stepFac;
+                deltat *= stepFac*stepFac;
                 for(auto cell: tissue->getLocalCells())
                 {
                     cell->getNodeField("x") = cell->getNodeField("x0");
@@ -466,7 +503,7 @@ int main(int argc, char **argv)
         else
         {
             deltat *= stepFac*stepFac*stepFac;
-            
+
             for(auto cell: tissue->getLocalCells())
             {
                 cell->getNodeField("vx") = cell->getNodeField("vx0") * stepFac;
@@ -478,9 +515,9 @@ int main(int argc, char **argv)
         }
         std::chrono::duration<double> elapsed_4 = finish_4 - finish_3;
         std::chrono::duration<double> elapsed_4_2 = finish_4_2 - finish_4;
-        
+
         tissue->getTissField("deltat") = deltat;
-        
+
         tissue->calculateCellCellAdjacency(3.0*intCL+intEL);
         tissue->updateGhosts();
         auto finish_5 = std::chrono::high_resolution_clock::now();
@@ -488,7 +525,7 @@ int main(int argc, char **argv)
 
         auto finish = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = finish - start;
-        
+
         if(tissue->getMyPart()==0)
         {
             cout << "Duration of time-step: " << elapsed.count() << endl;
@@ -500,9 +537,9 @@ int main(int argc, char **argv)
             cout << "    "<< "Update cell adjacency: " << elapsed_5.count() << endl;
         }
     }
-    
+
 //    tissue->closePVD();
-    
+
     MPI_Finalize();
 
     return 0;

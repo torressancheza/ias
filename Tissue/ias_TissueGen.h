@@ -24,9 +24,10 @@ namespace ias
     class TissueGen
     {
         public:
-            Teuchos::RCP<Tissue> genRegularGridSpheres(int nx, int ny, int nz, double deltax, double deltay, double deltaz, double r, int nSubdiv);
-            Teuchos::RCP<Tissue> genTripletSpheres(double r, double delta,int nSubdiv);
-        
+            Teuchos::RCP<Tissue> genRegularGridSpheres(int nx, int ny, int nz, double deltax, double deltay, double deltaz, double r, int nSubdiv, int type = VTK_SOLID_ICOSAHEDRON);
+            Teuchos::RCP<Tissue> genTripletSpheres(double r, double delta,int nSubdiv, int type = VTK_SOLID_ICOSAHEDRON);
+            Teuchos::RCP<Tissue> genSpheroid(double r,double delta, int cellsubdiv, int type, int spheroidsubdiv);
+
             /** @name Setters (prior to Update())
             *  @{ */
             /*! @brief Add a new field to the nodes with name newField*/
@@ -59,13 +60,13 @@ namespace ias
             void setBasisFunctionType(BasisFunctionType bfType)
             {    _bfType = bfType;    }
             /** @} */
-        
+
         private:
             BasisFunctionType _bfType; ///<Type of basis functions
             std::vector<std::string> _nodeFieldNames; ///<List of names for the nodal fields (x,y,z always included)
             std::vector<std::string> _cellFieldNames; ///<List of names for the cell fields (cellId always included)
-            std::vector<std::string> _tissFieldNames; ///<List of names for the tissue fields 
-        
+            std::vector<std::string> _tissFieldNames; ///<List of names for the tissue fields
+
             /*! @brief Check field names*/
             void _checkFieldNames();
     };
