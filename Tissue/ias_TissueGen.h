@@ -26,6 +26,7 @@ namespace ias
         public:
             Teuchos::RCP<Tissue> genRegularGridSpheres(int nx, int ny, int nz, double deltax, double deltay, double deltaz, double r, int nSubdiv, int type = VTK_SOLID_ICOSAHEDRON);
             Teuchos::RCP<Tissue> genTripletSpheres(double r, double delta,int nSubdiv, int type = VTK_SOLID_ICOSAHEDRON);
+            Teuchos::RCP<Tissue> genSpheroid(double r,double delta, int cellsubdiv, int type, int spheroidsubdiv);
 
             /** @name Setters (prior to Update())
             *  @{ */
