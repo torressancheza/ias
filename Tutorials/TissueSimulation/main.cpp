@@ -203,6 +203,17 @@ int main(int argc, char **argv)
         deltat = tissue->getTissField("deltat");
         for(auto cell: tissue->getLocalCells())
         {
+            //Re-read the cell parameters from the config file!! In case
+            //we want to change something in between two restarts.
+            cell->getCellField("intEL") = intEL;
+            cell->getCellField("intCL") = intCL;
+            cell->getCellField("intSt") = intSt;
+            cell->getCellField("kappa") = kappa;
+            cell->getCellField("tension") = tension;
+            cell->getCellField("viscosity") = viscosity;
+            cell->getCellField("frictiont") = frictiont;
+            cell->getCellField("frictionn") = frictionn;
+            
             cell->getNodeField("vx") *= deltat;
             cell->getNodeField("vy") *= deltat;
             cell->getNodeField("vz") *= deltat;
