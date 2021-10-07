@@ -34,7 +34,7 @@ int main(int argc, char **argv)
     double R{10.0};
     int nSubdivcell{3};
     int nSubdivSph{3};
-
+    
     //prefix of where to save cells
     string prefix_save="Cell";
 
@@ -165,7 +165,7 @@ int main(int argc, char **argv)
         cout << "calculateInteractingElements... "; fflush(stdout);
         tissue->calculateInteractingElements(intEL+3.0*intCL);
         cout << "done" << endl; fflush(stdout);
-
+        
         tissue->getTissField("time") = 0.0;
         tissue->getTissField("deltat") = deltat;
         tissue->getTissField("kConfin") = kConfin;
@@ -183,10 +183,7 @@ int main(int argc, char **argv)
             cell->getCellField("intCL") = intCL;
             cell->getCellField("intSt") = intSt;
             cell->getCellField("kappa") = kappa;
-            if(tissue->getNumberOfCells()==2 and cell->getCellField("cellId")==1)
-                cell->getCellField("tension") = 0.25 * tension;
-            else
-                cell->getCellField("tension") = tension;
+            cell->getCellField("tension") = tension;
             cell->getCellField("viscosity") = viscosity;
             cell->getCellField("frictiont") = frictiont;
             cell->getCellField("frictionn") = frictionn;
@@ -393,16 +390,6 @@ int main(int argc, char **argv)
                     if(tissue->getMyPart()==0)
                         cout << "deltat not modified since " << n_nochange << " iterations."  << endl;
                 }
-                else if(nIter==nr_maxite)
-                {
-                    deltat *= stepFac;
-                    for(auto cell: tissue->getLocalCells())
-                    {
-                        cell->getNodeField("vx") *= stepFac;
-                        cell->getNodeField("vy") *= stepFac;
-                        cell->getNodeField("vz") *= stepFac;
-                    }
-                }
                 if(deltat > maxDeltat)
                     deltat = maxDeltat;
                 step++;
@@ -425,7 +412,7 @@ int main(int argc, char **argv)
         else
         {
             deltat *= stepFac*stepFac*stepFac;
-
+            
             for(auto cell: tissue->getLocalCells())
             {
                 cell->getNodeField("vx") = cell->getNodeField("vx0") * stepFac;
