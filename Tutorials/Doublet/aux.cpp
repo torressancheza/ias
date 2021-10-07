@@ -31,10 +31,6 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     double viscosity = cellFields(fill->idxCellField("viscosity"));
     double frictiont = cellFields(fill->idxCellField("frictiont"));
     double frictionn = cellFields(fill->idxCellField("frictionn"));
-
-    tensor<double,3> voigt = {{{1.0,0.0},{0.0,0.0}},
-                              {{0.0,0.0},{0.0,1.0}},
-                              {{0.0,1.0},{1.0,0.0}}};
     
     int idx_x = fill->idxNodeField("x");
     int idx_z = fill->idxNodeField("z");
@@ -42,11 +38,6 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     int idx_zR = fill->idxNodeField("zR");
     int idx_vx = fill->idxNodeField("vx");
     int idx_vz = fill->idxNodeField("vz");
-
-    double kConfin = tissFields(fill->idxTissField("kConfin"));
-    double tConfin = tissFields(fill->idxTissField("tConfin"));
-    tensor<double,1> dConfin = tissFields(range(fill->idxTissField("dConfinX"),fill->idxTissField("dConfinZ")));
-    tensor<double,1> cConfin = tissFields(range(fill->idxTissField("cConfinX"),fill->idxTissField("cConfinZ")));
 
     //[2] CALCULATIONS
     tensor<double,1>       xR = bfs * nborFields(all,range(idx_xR,idx_zR));
@@ -113,16 +104,6 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     double vn = v*normal0;
     tensor<double,1> vt = proj0 * v;
 
-    // fill->cellIntegrals(fill->idxCellIntegral("A")) += fill->w_sample * jac;
-    // fill->cellIntegrals(fill->idxCellIntegral("X")) += fill->w_sample * jac * x(0);
-    // fill->cellIntegrals(fill->idxCellIntegral("Y")) += fill->w_sample * jac * x(1);
-    // fill->cellIntegrals(fill->idxCellIntegral("Z")) += fill->w_sample * jac * x(2);
-    
-    // fill->cellIntegrals(fill->idxCellIntegral("A0")) += fill->w_sample * jac0;
-    // fill->cellIntegrals(fill->idxCellIntegral("X0")) += fill->w_sample * jac0 * x0(0);
-    // fill->cellIntegrals(fill->idxCellIntegral("Y0")) += fill->w_sample * jac0 * x0(1);
-    // fill->cellIntegrals(fill->idxCellIntegral("Z0")) += fill->w_sample * jac0 * x0(2);
-
     // [3.1] Friction dissipation
     rhs_n += fill->w_sample * frictiont * jac0 * outer(bfs,proj0*v);
     A_nn  += fill->w_sample * frictiont * jac0 * outer(bfs,outer(bfs,proj0)).transpose({0,2,1,3});
@@ -150,6 +131,10 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     bool higher_order = fill->bfs.size()>2;
     if(higher_order)
     {
+        tensor<double,3> voigt = {{{1.0,0.0},{0.0,0.0}},
+                                {{0.0,0.0},{0.0,1.0}},
+                                {{0.0,1.0},{1.0,0.0}}};
+
         double kappa     = cellFields(fill->idxCellField("kappa")) * deltat;
         tensor<double,2> DDbfs(fill->bfs[2].data(),eNN,3);
         tensor<double,2>    DDx = DDbfs.T() * (nborFields(all,range(idx_x,idx_z))+nborFields(all,range(idx_vx,idx_vz)));
@@ -167,38 +152,20 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
         rhs_n += fill->w_sample *  kappa * H * (jac * dH + 0.5 * H * djac);
         A_nn  += fill->w_sample *  kappa * (jac * (H * ddH + outer(dH,dH)) + H * outer(dH,djac) + H * outer(djac,dH) + 0.5 * H * H * ddjac);
     }
-
-
-
-    //Confinement
-    double cPot = ConfinementPotential(kConfin, cConfin, dConfin, tConfin, x);
-    tensor<double,1> dx_cPot = dConfinementPotential(kConfin, cConfin, dConfin, tConfin, x);
-    tensor<double,2> ddx_cPot = ddConfinementPotential(kConfin, cConfin, dConfin, tConfin, x);
-    tensor<double,2> dcPot = outer(bfs, dx_cPot);
-
-    rhs_n += fill->w_sample * (jac * dcPot + cPot * djac);
-    A_nn  += fill->w_sample * (jac * outer(bfs, outer(bfs, ddx_cPot)).transpose({0,2,1,3}) + outer(dcPot, djac) + outer(djac, dcPot) + cPot * ddjac);
-
-
 }
 
 void interaction(Teuchos::RCP<ias::DoubleIntegralStr> inter)
 {
     using namespace std;
     using namespace Tensor;
+
+    tensor<double,1> globFields = inter->fillStr1->cellFields;
     
     double deltat    = inter->fillStr1->tissFields(inter->fillStr1->idxTissField("deltat"));
 
-    //Here we assume that r0 and w are the same everywhere in the tissue, important!
-    //we use the data of cell 1 arbitrarily
-    double r0        = inter->fillStr1->cellFields(inter->fillStr1->idxCellField("intEL"));
-    double w         = inter->fillStr1->cellFields(inter->fillStr1->idxCellField("intCL"));
-
-    //Creating a interaction strength which is the product of the strength of each cell
-    double D1         = inter->fillStr1->cellFields(inter->fillStr1->idxCellField("intSt"));
-    double D2         = inter->fillStr2->cellFields(inter->fillStr2->idxCellField("intSt"));
-
-    double D          = D1 * D2 * deltat;
+    double r0        = globFields(inter->fillStr1->idxCellField("intEL"));
+    double w         = globFields(inter->fillStr1->idxCellField("intCL"));
+    double D         = globFields(inter->fillStr1->idxCellField("intSt")) * deltat;
     
     //First calculate distance to see if we can drop the points
     int eNN_1    = inter->fillStr1->eNN;

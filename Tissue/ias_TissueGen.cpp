@@ -32,10 +32,10 @@ namespace ias
 
         if(std::find(_nodeFieldNames.begin(),_nodeFieldNames.end(),"y") != _nodeFieldNames.end())
             throw runtime_error("y is already a node field; you do not need to set it.");
-        
+
         if(std::find(_nodeFieldNames.begin(),_nodeFieldNames.end(),"z") != _nodeFieldNames.end())
             throw runtime_error("z is already a node field; you do not need to set it.");
-        
+
         if(std::find(_cellFieldNames.begin(),_cellFieldNames.end(),"cellId") != _cellFieldNames.end())
             throw runtime_error("cellId is already a cell field; you do not need to set it.");
 
@@ -57,7 +57,7 @@ namespace ias
         }
     }
 
-    Teuchos::RCP<Tissue> TissueGen::genRegularGridSpheres(int nx, int ny, int nz, double deltax, double deltay, double deltaz, double r, int nSubdiv)
+    Teuchos::RCP<Tissue> TissueGen::genRegularGridSpheres(int nx, int ny, int nz, double deltax, double deltay, double deltaz, double r, int nSubdiv, int type)
     {
         using namespace std;
         using namespace Tensor;
@@ -73,7 +73,7 @@ namespace ias
             string what = error.what();
             throw runtime_error("TissueGen::genRegularGridSphere: " + what);
         }
-        
+
         RCP<Tissue> tissue = rcp(new Tissue);
 
         tissue->_nCells = nx * ny * nz;
@@ -95,14 +95,14 @@ namespace ias
         loc_nCells = tissue->_nCellPart[tissue->getMyPart()];
 
         RCP<Cell> cell = rcp(new Cell);
-        cell->generateSphereFromOctahedron(nSubdiv, r);
+        cell->generateSphereFromPlatonicSolid(nSubdiv, r, type);
         cell->setBasisFunctionType(_bfType);
         for(auto f: _nodeFieldNames)
             cell->addNodeField(f);
         for(auto f: _cellFieldNames)
             cell->addCellField(f);
         cell->Update();
-                                
+
         for(int n = 0; n < loc_nCells; n++)
         {
             int glo_n = tissue->getGlobalIdx(n);
@@ -118,7 +118,7 @@ namespace ias
             newcell->_nodeFieldNames = cell->_nodeFieldNames;
             newcell->_cellFieldNames = cell->_cellFieldNames;
             newcell->Update();
-            
+
             newcell->getCellField("cellId") = glo_n;
 
             newcell->_nodeFields(all,0) += i * deltax;
@@ -127,16 +127,16 @@ namespace ias
 
             tissue->_cells.emplace_back(newcell);
         }
-        
+
         tissue->_tissFields.resize(_tissFieldNames.size());
         tissue->_tissFieldNames = _tissFieldNames;
-        
+
         tissue->Update();
-        
+
         return tissue;
     }
 
-    Teuchos::RCP<Tissue> TissueGen::genTripletSpheres(double r, double delta,int nSubdiv)
+    Teuchos::RCP<Tissue> TissueGen::genTripletSpheres(double r, double delta,int nSubdiv, int type)
     {
         //Generates triplet of cells of radius r, whose centers are the points of an equilateral triangle, and so that there
         //is a distance delta between the membranes of two neigbouring cells (distance 2r+delta beetween centers)
@@ -154,7 +154,7 @@ namespace ias
             string what = error.what();
             throw runtime_error("TissueGen::genRegularGridSphere: " + what);
         }
-        
+
         RCP<Tissue> tissue = rcp(new Tissue);
 
         tissue->_nCells = 3;
@@ -176,20 +176,20 @@ namespace ias
         loc_nCells = tissue->_nCellPart[tissue->getMyPart()];
 
         RCP<Cell> cell = rcp(new Cell);
-        cell->generateSphereFromOctahedron(nSubdiv, r);
+        cell->generateSphereFromPlatonicSolid(nSubdiv, r, type);
         cell->setBasisFunctionType(_bfType);
         for(auto f: _nodeFieldNames)
             cell->addNodeField(f);
         for(auto f: _cellFieldNames)
             cell->addCellField(f);
         cell->Update();
-                                
+
         for(int n = 0; n < loc_nCells; n++)
         {
             int glo_n = tissue->getGlobalIdx(n);
             double a=2*r+delta; //length of the side of the equilateral triangle
             double z =  0; //z coordinate is zero for every cell
-            double y =  (glo_n == 0) ? 0 : a*sqrt(3)/2.0;  //y coordinate: 0 [0], a*sqrt(3)/2 [1 and 2] 
+            double y =  (glo_n == 0) ? 0 : a*sqrt(3)/2.0;  //y coordinate: 0 [0], a*sqrt(3)/2 [1 and 2]
             double x =  (glo_n == 0) ? 0 : (2*glo_n-3)*a*0.5; // x coordinate: 0 [0] -a/2 [1] a/2 [2]
 
             cout << "Coordinates generated for glo_n= "<< glo_n <<" : " << x << " " << y << " " << z << endl;
@@ -197,12 +197,12 @@ namespace ias
             RCP<Cell> newcell = rcp(new Cell);
             newcell->_connec = cell->_connec;
             newcell->_nodeFields = cell->_nodeFields;
-            newcell->_cellFields = cell->_cellFields;  
+            newcell->_cellFields = cell->_cellFields;
             newcell->_bfType = _bfType;
             newcell->_nodeFieldNames = cell->_nodeFieldNames;
             newcell->_cellFieldNames = cell->_cellFieldNames;
             newcell->Update();
-            
+
             newcell->getCellField("cellId") = glo_n;
 
             newcell->_nodeFields(all,0) += x;
@@ -211,12 +211,12 @@ namespace ias
 
             tissue->_cells.emplace_back(newcell);
         }
-        
+
         tissue->_tissFields.resize(_tissFieldNames.size());
         tissue->_tissFieldNames = _tissFieldNames;
-        
+
         tissue->Update();
-        
+
         return tissue;
     }
 
@@ -284,9 +284,9 @@ namespace ias
             vtkSmartPointer<vtkIdList> ptsIds = vtkSmartPointer<vtkIdList>::New();
             vtkoutput->GetCellPoints(i, ptsIds);
             array<double,3> x0,x1,x2;
-            x0[0]=center_pos[ptsIds->GetId(0)][0]; x0[1]=center_pos[ptsIds->GetId(0)][1]; x0[2]=center_pos[ptsIds->GetId(0)][2]; 
-            x1[0]=center_pos[ptsIds->GetId(1)][0]; x1[1]=center_pos[ptsIds->GetId(1)][1]; x1[2]=center_pos[ptsIds->GetId(1)][2]; 
-            x2[0]=center_pos[ptsIds->GetId(2)][0]; x2[1]=center_pos[ptsIds->GetId(2)][1]; x2[2]=center_pos[ptsIds->GetId(2)][2]; 
+            x0[0]=center_pos[ptsIds->GetId(0)][0]; x0[1]=center_pos[ptsIds->GetId(0)][1]; x0[2]=center_pos[ptsIds->GetId(0)][2];
+            x1[0]=center_pos[ptsIds->GetId(1)][0]; x1[1]=center_pos[ptsIds->GetId(1)][1]; x1[2]=center_pos[ptsIds->GetId(1)][2];
+            x2[0]=center_pos[ptsIds->GetId(2)][0]; x2[1]=center_pos[ptsIds->GetId(2)][1]; x2[2]=center_pos[ptsIds->GetId(2)][2];
             el0=sqrt((x0[0]-x1[0])*(x0[0]-x1[0])+(x0[1]-x1[1])*(x0[1]-x1[1])+(x0[2]-x1[2])*(x0[2]-x1[2]));
             if(el0 > maxL){maxL=el0;}
             if(el0 < minL){minL=el0;}
@@ -365,4 +365,3 @@ namespace ias
         return tissue;
     }
 }
-    

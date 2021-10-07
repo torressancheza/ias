@@ -49,6 +49,8 @@ namespace ias
             double normR0{};
             double normS0{};
 
+            _ressError.clear();
+
             while(not conv)
             {
                 iter++;
@@ -76,6 +78,8 @@ namespace ias
                 _integration->getVector()->NormInf(&normR);
                 _integration->getSolution()->NormInf(&normS);
 
+                _ressError.push_back(normR);
+                
                 if(_convRel)
                 {
                     if(iter==1)
@@ -106,7 +110,7 @@ namespace ias
 
             if(not conv)
             {
-                if ( _integration->getTissue()->getMyPart()==0)
+                if ( _verbose and _integration->getTissue()->getMyPart()==0)
                 {
                     if (ierr == 1)
                     {

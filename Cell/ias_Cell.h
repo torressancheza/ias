@@ -16,6 +16,7 @@
 #include <vtkPolyData.h>
 #include <vtkCellLocator.h>
 #include <vtkUnstructuredGrid.h>
+#include <vtkPlatonicSolidSource.h>
 
 
 #include "Tensor.h"
@@ -78,7 +79,7 @@ namespace ias
             /** @name Mesh generation
             *  @{ */
             /*! Generate a sphere of radius r by subdividing an octahedron nSubdiv times*/
-            void generateSphereFromOctahedron(int nSubdiv, double r);
+            void generateSphereFromPlatonicSolid(int nSubdiv, double r, int type=VTK_SOLID_ICOSAHEDRON);
             /** @} */
 
         
@@ -219,6 +220,7 @@ namespace ias
         friend class Tissue;
         friend class TissueGen;
         friend class Integration;
+        friend class ParametrisationUpdate;
         friend void mapFields(Teuchos::RCP<Cell> cell1, Teuchos::RCP<Cell> cell2);
 
     };

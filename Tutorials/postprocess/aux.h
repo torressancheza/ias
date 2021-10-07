@@ -15,10 +15,18 @@
 #include "ias_Tissue.h"
 #include "ias_TissueGen.h"
 #include "ias_Integration.h"
+#include "ias_AztecOO.h"
+#include "ias_NewtonRaphson.h"
 #include "ConfigFile.h"
 
 void internal(Teuchos::RCP<ias::SingleIntegralStr> fill);
 void interaction(Teuchos::RCP<ias::DoubleIntegralStr> fill);
+void calculateMoments(Teuchos::RCP<ias::SingleIntegralStr> fill);
+
+void eulerianUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill);
+void arbLagEulUpdate(Teuchos::RCP<ias::SingleIntegralStr> fill);
+void leastSquaresTension(Teuchos::RCP<ias::SingleIntegralStr> fill);
+void leastSquaresTensionInteraction(Teuchos::RCP<ias::DoubleIntegralStr> inter);
 
 inline double SmoothStep(double rc1, double rc2, double r)
 {
@@ -158,6 +166,5 @@ inline Tensor::tensor<double,2> ddConfinementPotential(double k, Tensor::tensor<
 
     return ddpot;
 }
-
 
 #endif //aux_mzg_h

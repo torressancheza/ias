@@ -850,7 +850,7 @@ namespace ias
         vector<int> glo_cellId(_nCells);
         
         for(auto c: _cells)
-            loc_cellId.push_back(c->getCellField("cellId"));
+            loc_cellId.push_back(c->getCellField("cellId")+0.5);
         
         MPI_Allgatherv(loc_cellId.data(), loc_cellId.size(), MPI_INT, glo_cellId.data(), _nCellPart.data(), _offsetPart.data(), MPI_INT, _comm);
         

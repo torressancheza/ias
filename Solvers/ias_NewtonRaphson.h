@@ -68,12 +68,21 @@ namespace ias
                 void setVerbosity(bool verbose)
                 {    _verbose = verbose;    }
                 /** @} */
+
+                /*! @brief Get residuals*/
+                std::vector<double> getResiduals()
+                {    return _ressError;    }
+
+                /*! @brief Get residuals*/
+                Teuchos::RCP<Solver> getLinearSolver()
+                {    return _linearSolver;    }
             
             private:
                 Teuchos::RCP<Solver> _linearSolver = Teuchos::null; ///<linear solver
                 double _solTol{};
                 bool   _convRel{};
                 bool   _verbose{};
+                std::vector<double> _ressError;
         };
     }
 }

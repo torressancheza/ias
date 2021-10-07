@@ -123,14 +123,22 @@ namespace ias
                 int i1 = cell->GetPointId(0);
                 int i2 = cell->GetPointId(1);
                 int i3 = cell->GetPointId(2);
-                cells->InsertNextCell({newPointLabels[i1], newPointLabels[i2], newPointLabels[i3]});
+                vtkSmartPointer<vtkIdList> element = vtkSmartPointer<vtkIdList>::New();
+                element->InsertNextId(newPointLabels[i1]); 
+                element->InsertNextId(newPointLabels[i2]); 
+                element->InsertNextId(newPointLabels[i3]); 
+                cells->InsertNextCell(element);
             }
         }
         // cout << "AQUI 2 " << endl;
 
         for(auto& c: cellsToAdd)
         {
-            cells->InsertNextCell({newPointLabels[c[0]], newPointLabels[c[1]], newPointLabels[c[2]]});
+            vtkSmartPointer<vtkIdList> element = vtkSmartPointer<vtkIdList>::New();
+            element->InsertNextId(newPointLabels[c[0]]); 
+            element->InsertNextId(newPointLabels[c[1]]); 
+            element->InsertNextId(newPointLabels[c[2]]); 
+            cells->InsertNextCell(element);
         }
 
         polydata = vtkSmartPointer<vtkPolyData>::New();
