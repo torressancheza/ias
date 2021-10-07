@@ -60,13 +60,13 @@ namespace ias
             void setBasisFunctionType(BasisFunctionType bfType)
             {    _bfType = bfType;    }
             /** @} */
-
+        
         private:
             BasisFunctionType _bfType; ///<Type of basis functions
             std::vector<std::string> _nodeFieldNames; ///<List of names for the nodal fields (x,y,z always included)
             std::vector<std::string> _cellFieldNames; ///<List of names for the cell fields (cellId always included)
-            std::vector<std::string> _tissFieldNames; ///<List of names for the tissue fields
-
+            std::vector<std::string> _tissFieldNames; ///<List of names for the tissue fields 
+        
             /*! @brief Check field names*/
             void _checkFieldNames();
     };
