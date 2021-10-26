@@ -20,19 +20,6 @@
 #include "ias_AztecOO.h"
 #include "ias_NewtonRaphson.h"
 
-//FIXME: delete me
-#include "vtkSmartPointer.h"
-#include "vtkPoints.h"
-#include "vtkCell.h"
-#include "vtkDoubleArray.h"
-#include "vtkPointData.h"
-#include "vtkCellData.h"
-#include <vtkPolyData.h>
-#include <vtkUnstructuredGrid.h>
-#include <vtkXMLUnstructuredGridWriter.h>
-#include <vtkXMLUnstructuredGridReader.h>
-#include <vtkDataSetSurfaceFilter.h>
-
 namespace ias
 {
     void ParametrisationUpdate::Update()
@@ -67,29 +54,12 @@ namespace ias
         _integrations.clear();
         _linearSolvers.clear();
         _newtonRaphsons.clear();
-        // _x0.clear();
-        // _xR.clear();
-        // _normalErr.clear();
-
-        // //FIXME: delete me
-        // _S.clear();
-        // _J.clear();
-        // _energy.clear();
 
         //Create the set of local tissues per cell (this is just to have a well-defined integration)
         if(_method != Method::Lagrangian or _remove_RBT or _remove_RBR)
         {
             for(auto cell: _tissue->getLocalCells())
             {
-                // _x0.push_back(Tensor::tensor<double,2>(cell->getNumberOfPoints(), 3));
-                // _xR.push_back(Tensor::tensor<double,2>(cell->getNumberOfPoints(), 3));
-                // _normalErr.push_back(Tensor::tensor<double,1>(cell->getNumberOfElements()));
-
-                // //FIXME: delete me
-                // _S.push_back(Tensor::tensor<double,1>(cell->getNumberOfElements()));
-                // _J.push_back(Tensor::tensor<double,1>(cell->getNumberOfElements()));
-                // _energy.push_back(Tensor::tensor<double,1>(cell->getNumberOfElements()));
-
                 RCP<Cell> newCell = rcp(new Cell);
                 if(_method == Method::ALE)
                 {
@@ -143,15 +113,7 @@ namespace ias
                 integration->setSingleIntegrand(_updateFunction);
                 integration->setNumberOfIntegrationPointsSingleIntegral(3); //TODO: make it a parameter to set
                 integration->setNumberOfIntegrationPointsDoubleIntegral(1);
-                //FIXME: delete me
                 integration->userAuxiliaryObjects.push_back(&_dispFieldNames);
-                // integration->userAuxiliaryObjects.push_back(&(*cell));
-                // integration->userAuxiliaryObjects.push_back(&(_x0[_x0.size()-1]));
-                // integration->userAuxiliaryObjects.push_back(&(_xR[_xR.size()-1]));
-                // integration->userAuxiliaryObjects.push_back(&_normalErr[_normalErr.size()-1]);
-                // integration->userAuxiliaryObjects.push_back(&_S[_S.size()-1]);
-                // integration->userAuxiliaryObjects.push_back(&_J[_J.size()-1]);
-                // integration->userAuxiliaryObjects.push_back(&_energy[_energy.size()-1]);
                 integration->Update();
                 integration->computeSingleIntegral();
                 integration->assemble();
@@ -196,91 +158,91 @@ namespace ias
     {
         int conv{1};
 
-        // if(_remove_RBT or _remove_RBR)
-        // {
-        //     using namespace Tensor;
+        if(_remove_RBT or _remove_RBR)
+        {
+            using namespace Tensor;
 
-        //     std::vector<double> vMPI0(4,0.0), vMPI(4,0.0), lMPI(3, 0.0), iMPI(6, 0.0);
-        //     double &A0 = vMPI0[0], &X0 = vMPI0[1], &Y0 = vMPI0[2], &Z0 = vMPI0[3];
-        //     double &A = vMPI[0], &X = vMPI[1], &Y = vMPI[2], &Z = vMPI[3];
-        //     double &LX = lMPI[0], &LY = lMPI[1], &LZ = lMPI[2];
-        //     double &Ixx = iMPI[0], &Ixy = iMPI[1], &Ixz = iMPI[2], &Iyy = iMPI[3], &Iyz = iMPI[4], &Izz = iMPI[5];
-        //     for(auto integration: _integrations)
-        //     {
-        //         integration->InitialiseTissIntegralFields(0.0);
-        //         integration->InitialiseCellIntegralFields(0.0);
-        //         integration->setSingleIntegrand(_centreOfMass);
-        //         integration->computeSingleIntegral();
-        //         integration->assemble();
+            std::vector<double> vMPI0(4,0.0), vMPI(4,0.0), lMPI(3, 0.0), iMPI(6, 0.0);
+            double &A0 = vMPI0[0], &X0 = vMPI0[1], &Y0 = vMPI0[2], &Z0 = vMPI0[3];
+            double &A = vMPI[0], &X = vMPI[1], &Y = vMPI[2], &Z = vMPI[3];
+            double &LX = lMPI[0], &LY = lMPI[1], &LZ = lMPI[2];
+            double &Ixx = iMPI[0], &Ixy = iMPI[1], &Ixz = iMPI[2], &Iyy = iMPI[3], &Iyz = iMPI[4], &Izz = iMPI[5];
+            for(auto integration: _integrations)
+            {
+                integration->InitialiseTissIntegralFields(0.0);
+                integration->InitialiseCellIntegralFields(0.0);
+                integration->setSingleIntegrand(_centreOfMass);
+                integration->computeSingleIntegral();
+                integration->assemble();
 
-        //         A += integration->getTissue()->getTissField("A");
-        //         X += integration->getTissue()->getTissField("X");
-        //         Y += integration->getTissue()->getTissField("Y");
-        //         Z += integration->getTissue()->getTissField("Z");
+                A += integration->getTissue()->getTissField("A");
+                X += integration->getTissue()->getTissField("X");
+                Y += integration->getTissue()->getTissField("Y");
+                Z += integration->getTissue()->getTissField("Z");
 
-        //         A0 += integration->getTissue()->getTissField("A0");
-        //         X0 += integration->getTissue()->getTissField("X0");
-        //         Y0 += integration->getTissue()->getTissField("Y0");
-        //         Z0 += integration->getTissue()->getTissField("Z0");
+                A0 += integration->getTissue()->getTissField("A0");
+                X0 += integration->getTissue()->getTissField("X0");
+                Y0 += integration->getTissue()->getTissField("Y0");
+                Z0 += integration->getTissue()->getTissField("Z0");
 
-        //         LX += integration->getTissue()->getTissField("LX");
-        //         LY += integration->getTissue()->getTissField("LY");
-        //         LZ += integration->getTissue()->getTissField("LZ");
+                LX += integration->getTissue()->getTissField("LX");
+                LY += integration->getTissue()->getTissField("LY");
+                LZ += integration->getTissue()->getTissField("LZ");
 
-        //         Ixx += integration->getTissue()->getTissField("Ixx");
-        //         Ixy += integration->getTissue()->getTissField("Ixy");
-        //         Ixz += integration->getTissue()->getTissField("Ixz");
-        //         Iyy += integration->getTissue()->getTissField("Iyy");
-        //         Iyz += integration->getTissue()->getTissField("Iyz");
-        //         Izz += integration->getTissue()->getTissField("Izz");
+                Ixx += integration->getTissue()->getTissField("Ixx");
+                Ixy += integration->getTissue()->getTissField("Ixy");
+                Ixz += integration->getTissue()->getTissField("Ixz");
+                Iyy += integration->getTissue()->getTissField("Iyy");
+                Iyz += integration->getTissue()->getTissField("Iyz");
+                Izz += integration->getTissue()->getTissField("Izz");
 
-        //         integration->setSingleIntegrand(_updateFunction);
-        //     }
+                integration->setSingleIntegrand(_updateFunction);
+            }
 
-        //     MPI_Allreduce(MPI_IN_PLACE, vMPI0.data(), 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        //     MPI_Allreduce(MPI_IN_PLACE, vMPI.data(), 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        //     MPI_Allreduce(MPI_IN_PLACE, lMPI.data(), 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        //     MPI_Allreduce(MPI_IN_PLACE, iMPI.data(), 6, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+            MPI_Allreduce(MPI_IN_PLACE, vMPI0.data(), 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+            MPI_Allreduce(MPI_IN_PLACE, vMPI.data(), 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+            MPI_Allreduce(MPI_IN_PLACE, lMPI.data(), 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+            MPI_Allreduce(MPI_IN_PLACE, iMPI.data(), 6, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-        //     tensor<double,1> Xvec = {X/A, Y/A, Z/A};
-        //     tensor<double,1> X0vec = {X0/A0, Y0/A0, Z0/A0};
-        //     tensor<double,1> V = Xvec-X0vec;
-        //     tensor<double,1> L = {LX, LY, LZ};
-        //     L -= 0.5 * V * antisym3D * (Xvec+X0vec);
+            tensor<double,1> Xvec = {X/A, Y/A, Z/A};
+            tensor<double,1> X0vec = {X0/A0, Y0/A0, Z0/A0};
+            tensor<double,1> V = Xvec-X0vec;
+            tensor<double,1> L = {LX, LY, LZ};
+            L -= 0.5 * V * antisym3D * (Xvec+X0vec);
 
-        //     tensor<double,2> I = {{Ixx, Ixy, Ixz}, {Ixy, Iyy, Iyz}, {Ixz, Iyz, Izz}};
-        //     I += 0.5 * (A * ((Xvec*Xvec) * Identity(3) - outer(Xvec,Xvec)) + A0 * ((X0vec*X0vec) * Identity(3) - outer(X0vec,X0vec)));
-        //     tensor<double,1> omega = I.inv() * L;
-        //     double angle = sqrt(omega*omega);
-        //     tensor<double, 1> axis = omega/sqrt(omega*omega);
+            tensor<double,2> I = {{Ixx, Ixy, Ixz}, {Ixy, Iyy, Iyz}, {Ixz, Iyz, Izz}};
+            I += 0.5 * (A * ((Xvec*Xvec) * Identity(3) - outer(Xvec,Xvec)) + A0 * ((X0vec*X0vec) * Identity(3) - outer(X0vec,X0vec)));
+            tensor<double,1> omega = I.inv() * L;
+            double angle = sqrt(omega*omega);
+            tensor<double, 1> axis = omega/sqrt(omega*omega);
 
-        //     for(auto cell: _tissue->getLocalCells())
-        //     {
+            for(auto cell: _tissue->getLocalCells())
+            {
 
-        //         if(_remove_RBT)
-        //         {
-        //             cell->getNodeField(_dispFieldNames[0]) -= V(0);
-        //             cell->getNodeField(_dispFieldNames[1]) -= V(1);
-        //             cell->getNodeField(_dispFieldNames[2]) -= V(2);
-        //         }
+                if(_remove_RBT)
+                {
+                    cell->getNodeField(_dispFieldNames[0]) -= V(0);
+                    cell->getNodeField(_dispFieldNames[1]) -= V(1);
+                    cell->getNodeField(_dispFieldNames[2]) -= V(2);
+                }
 
-        //         if(_remove_RBR)
-        //         {
-        //             for(int i = 0; i < cell->getNumberOfPoints(); i++)
-        //             {
-        //                 tensor<double,1> x0 = {cell->getNodeField("x")(i), cell->getNodeField("y")(i), cell->getNodeField("z")(i)};
-        //                 tensor<double,1> v = {cell->getNodeField(_dispFieldNames[0])(i), cell->getNodeField(_dispFieldNames[1])(i), cell->getNodeField(_dispFieldNames[2])(i)};
-        //                 tensor<double,1> x = x0+v;
+                if(_remove_RBR)
+                {
+                    for(int i = 0; i < cell->getNumberOfPoints(); i++)
+                    {
+                        tensor<double,1> x0 = {cell->getNodeField("x")(i), cell->getNodeField("y")(i), cell->getNodeField("z")(i)};
+                        tensor<double,1> v = {cell->getNodeField(_dispFieldNames[0])(i), cell->getNodeField(_dispFieldNames[1])(i), cell->getNodeField(_dispFieldNames[2])(i)};
+                        tensor<double,1> x = x0+v;
 
-        //                 tensor<double,1> rot = omega * antisym3D * (0.5*(x+x0)-0.5*(Xvec+X0vec));
+                        tensor<double,1> rot = omega * antisym3D * (0.5*(x+x0)-0.5*(Xvec+X0vec));
 
-        //                 cell->getNodeField(_dispFieldNames[0])(i) -= rot(0);
-        //                 cell->getNodeField(_dispFieldNames[1])(i) -= rot(1);
-        //                 cell->getNodeField(_dispFieldNames[2])(i) -= rot(2);
-        //             }
-        //         }
-        //     }
-        // }
+                        cell->getNodeField(_dispFieldNames[0])(i) -= rot(0);
+                        cell->getNodeField(_dispFieldNames[1])(i) -= rot(1);
+                        cell->getNodeField(_dispFieldNames[2])(i) -= rot(2);
+                    }
+                }
+            }
+        }
 
         if(_method == Method::Lagrangian)
         {
@@ -333,32 +295,6 @@ namespace ias
                         auto newCell = tissue->getLocalCells()[0];
                         auto cell = _tissue->getLocalCells()[loc_idx];
 
-                        // auto& x0 = _x0[loc_idx];
-
-                        // integration->userAuxiliaryObjects[2] = &(_x0[loc_idx]);
-                        // integration->userAuxiliaryObjects[3] = &(_xR[loc_idx]);
-                        // integration->userAuxiliaryObjects[4] = &_normalErr[loc_idx];
-                        // integration->userAuxiliaryObjects[5] = &(_S[loc_idx]);
-                        // integration->userAuxiliaryObjects[6] = &(_J[loc_idx]);
-                        // integration->userAuxiliaryObjects[7] = &(_energy[loc_idx]);
-                        // integration->setSingleIntegrand(_eulerianUpdate);
-                        // linearSolver->getIntegration()->InitialiseTissIntegralFields(0.0);
-                        // linearSolver->getIntegration()->InitialiseCellIntegralFields(0.0);
-                        // linearSolver->getIntegration()->computeSingleIntegral();
-                        // linearSolver->getIntegration()->assemble();
-                        // linearSolver->getIntegration()->InitialiseTissIntegralFields(0.0);
-                        // linearSolver->getIntegration()->InitialiseCellIntegralFields(0.0);
-                        // linearSolver->getIntegration()->fillVectorWithScalar(0.0);
-                        // linearSolver->getIntegration()->fillSolutionWithScalar(0.0);
-                        // linearSolver->getIntegration()->fillMatrixWithScalar(0.0);
-                        // linearSolver->getIntegration()->computeSingleIntegral();
-                        // linearSolver->getIntegration()->assemble();
-                        // linearSolver->solve();
-                        // conv = linearSolver->getConvergence();
-                        // if(conv)
-                        //     linearSolver->getIntegration()->setSolToDOFs();
-                        // integration->setSingleIntegrand(_arbLagEulUpdate);
-
                         newCell->getNodeField("x") = cell->getNodeField("x") + cell->getNodeField(_dispFieldNames[0]);
                         newCell->getNodeField("y") = cell->getNodeField("y") + cell->getNodeField(_dispFieldNames[1]);
                         newCell->getNodeField("z") = cell->getNodeField("z") + cell->getNodeField(_dispFieldNames[2]);
@@ -369,24 +305,6 @@ namespace ias
                         newCell->getNodeField("yR") = newCell->getNodeField("y");
                         newCell->getNodeField("zR") = newCell->getNodeField("z");
 
-                        tissue->getTissField("A0") = tissue->getTissField("A");
-
-                        // _xR[loc_idx](all,0) = cell->getNodeField("x");
-                        // _xR[loc_idx](all,1) = cell->getNodeField("y");
-                        // _xR[loc_idx](all,2) = cell->getNodeField("z");
-
-                        // _x0[loc_idx](all,0) = cell->getNodeField("x");
-                        // _x0[loc_idx](all,1) = cell->getNodeField("y");
-                        // _x0[loc_idx](all,2) = cell->getNodeField("z");
-
-                        double nElem = tissue->getTissField("nElem");
-                        double A  = tissue->getTissField("A0");
-                        double l = sqrt(4.0/sqrt(3)*A/nElem);
-
-                        // _J[loc_idx] = 0.0;
-                        // _S[loc_idx] = 0.0;
-                        // _energy[loc_idx] = 0.0;          
-                        
                         integration->fillVectorWithScalar(0.0);
                         integration->computeSingleIntegral();
                         integration->assemble();
@@ -394,23 +312,8 @@ namespace ias
                         integration->getVector()->NormInf(&res);
                         int n{};
 
-                        // double maxEnergy = 0.0;
-                        // for(int e = 0; e < cell->getNumberOfElements(); e++)
-                        // {
-                        //     double energy = _energy[loc_idx](e);
-                        //     if(energy > maxEnergy)
-                        //         maxEnergy = energy;
-                        // }
-
-                        // cout << maxEnergy << endl;
                         while( res/tissue->getTissField("deltat") > 1.E-4)                      
                         {
-                            // _normalErr[loc_idx] = 0.0;
-
-                            //FIXME: erase me
-                            // _J[loc_idx] = 0.0;
-                            // _S[loc_idx] = 0.0;
-                            // _energy[loc_idx] = 0.0;
                             newtonRaphson->solve();
  
                             conv = newtonRaphson->getConvergence();
@@ -425,92 +328,16 @@ namespace ias
                             }
                             else 
                             {
-                                // double maxNorm = 0.0;
-                                // maxEnergy = 0.0;
-                                // for(int i = 0; i < cell->getNumberOfPoints(); i++)
-                                // {
-                                //     Tensor::tensor<double,1> diff(3);
-                                //     diff(0) = cell->getNodeField("x")(i)-_x0[loc_idx](i,0);
-                                //     diff(1) = cell->getNodeField("y")(i)-_x0[loc_idx](i,1);
-                                //     diff(2) = cell->getNodeField("z")(i)-_x0[loc_idx](i,2);
-
-                                //     double norm = sqrt(diff*diff);
-                                //     if(norm > maxNorm)
-                                //         maxNorm = norm;
-                                // }
-
-                                // double maxErr = 0.0;
-                                // for(int e = 0; e < cell->getNumberOfElements(); e++)
-                                // {
-                                //     if(_normalErr[loc_idx](e) > maxErr)
-                                //         maxErr = _normalErr[loc_idx](e);
-                                    
-                                //     double energy = _energy[loc_idx](e);
-                                //     if(energy > maxEnergy)
-                                //         maxEnergy = energy;
-                                // }
-
-                                // cout << n << " " << maxEnergy << endl;
- 
                                 newCell->getNodeField("x0") = newCell->getNodeField("x");
                                 newCell->getNodeField("y0") = newCell->getNodeField("y");
                                 newCell->getNodeField("z0") = newCell->getNodeField("z");
 
-                                // if(newtonRaphson->getNumberOfIterations() <= 4 and maxNorm < l/10 and maxErr < 1.E-7)
                                 if(newtonRaphson->getNumberOfIterations() <= 4 )
                                     tissue->getTissField("deltat") *= stepFactor;
 
 
                                 res = newtonRaphson->getResiduals()[0]; //Forces in the first time-step of NR are only due to mesh distortion
 
-                                // //FIXME: erase me
-                                // vtkSmartPointer<vtkUnstructuredGrid> polydata = vtkSmartPointer<vtkUnstructuredGrid>::New();
-                                // vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-                                        
-                                // for(int i =0; i < cell->getNumberOfPoints(); i++)
-                                // {
-                                //     tensor<double,1> x = cell->_nodeFields(i,all);
-                                //     points->InsertNextPoint ( x(0), x(1), x(2) );
-                                // }
-                                // polydata->SetPoints(points);
-
-                                // vtkSmartPointer<vtkCellArray> cells = vtkSmartPointer<vtkCellArray>::New();
-                                // for(int i =0; i < cell->getNumberOfElements(); i++)
-                                // {
-                                //     tensor<int,1> c = cell->_connec(i,all);
-                                //     vtkSmartPointer<vtkIdList> element =vtkSmartPointer<vtkIdList>::New();
-                                    
-                                //     for(int k = 0; k < 3; k++)
-                                //         element->InsertNextId(c(k));
-                                    
-                                //     cells->InsertNextCell(element);
-                                // }
-                                
-                                // int type = cell->_connec.shape()[1] == 3 ? VTK_TRIANGLE : VTK_LINE;
-                                // polydata->SetCells(type,cells);
-                                
-                                // //Insert nodeFields
-                                // vtkSmartPointer<vtkDoubleArray> vtkelFields = vtkSmartPointer<vtkDoubleArray>::New();
-                                // vtkelFields->SetNumberOfComponents(3);
-                                // vtkelFields->SetNumberOfTuples(cell->getNumberOfElements());
-                                // vtkelFields->SetName("mesh");
-                                
-                                // for(int j = 0; j < cell->getNumberOfElements(); j++)
-                                // {
-                                //     vtkelFields->SetTuple3(j,_J[loc_idx](j),_S[loc_idx](j),_energy[loc_idx](j));
-                                // }
-
-                                // polydata->GetCellData()->AddArray(vtkelFields);
-
-                                // std::string name = "elastic"+std::to_string(int(cell->getCellField("cellId")+0.5))+"_"+std::to_string(n)+".vtu";
-                                // vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
-                                // writer->SetInputData(polydata);
-                                // writer->SetFileName(name.c_str());
-                                // writer->Update();
-
-                                // name = "cell"+std::to_string(int(cell->getCellField("cellId")+0.5))+"_"+std::to_string(n)+".vtu";
-                                // cell->saveVTK(name.c_str());
-                    
                                 n++;
                             }
                         }
@@ -535,8 +362,6 @@ namespace ias
         
         MPI_Allreduce(MPI_IN_PLACE, &conv, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 
-        // MPI_Finalize();
-        // exit(0);
         return conv;
     }
 
@@ -677,26 +502,6 @@ namespace ias
         double nElem = tissFields(fill->idxTissField("nElem"));
         double A  = fill->tissFields(fill->idxTissField("A"));
 
-        // std::vector<std::string>* velFieldNames = static_cast<std::vector<std::string>*>(fill->userAuxiliaryObjects[0]);
-        // Cell* cell = static_cast<Cell*>(fill->userAuxiliaryObjects[1]);
-        // tensor<double,2>* x0Nodes = static_cast<tensor<double,2>*>(fill->userAuxiliaryObjects[2]);
-        // tensor<double,2>* xRNodes = static_cast<tensor<double,2>*>(fill->userAuxiliaryObjects[3]);
-        // tensor<double,1>* normalErr = static_cast<tensor<double,1>*>(fill->userAuxiliaryObjects[4]);
-
-        // tensor<double,1>* _S = static_cast<tensor<double,1>*>(fill->userAuxiliaryObjects[5]);
-        // tensor<double,1>* _J = static_cast<tensor<double,1>*>(fill->userAuxiliaryObjects[6]);
-        // tensor<double,1>* _energy = static_cast<tensor<double,1>*>(fill->userAuxiliaryObjects[7]);
-
-        // int elemID = fill->elemID;
-
-        // tensor<double,2> nborxR(eNN,3);
-        // tensor<double,2> nborx0(eNN,3);
-        // int*  adjEN = cell->_bfs->getNeighbours(elemID);
-        // for(int i = 0; i < eNN; i++)
-        // {
-        //     nborx0(i,all) = x0Nodes->operator()(adjEN[i],all);
-        //     nborxR(i,all) = xRNodes->operator()(adjEN[i],all);
-        // }
 
         int idx_x = fill->idxNodeField("x");
         int idx_z = fill->idxNodeField("z");
@@ -710,21 +515,16 @@ namespace ias
         //[2.1] Geometry in the configuration at previous time-step
         tensor<double,1>      x0 = bfs * nborFields(all,range(idx_x0,idx_z0));
         tensor<double,2>     Dx0 = Dbfs.T() * nborFields(all,range(idx_x0,idx_z0));
-        // tensor<double,2>    DDx0 = DDbfs.T() * nborFields(all,range(idx_x0,idx_z0));
         tensor<double,1>  cross0 = Dx0(1,all) * antisym3D * Dx0(0,all);
         double              jac0 = sqrt(cross0*cross0);
         tensor<double,1> normal0 = cross0/jac0;
         double              x0n0 = x0*normal0;
         tensor<double,2> metric0 = Dx0 * Dx0.T();
         tensor<double,2> imetric0 = metric0.inv();
-        // tensor<double,2> curva0 = (DDx0 * normal0) * voigt;
-
-        // tensor<double,1>      v = bfs * nborFields(all,range(idx_vx,idx_vz));
         
         //[2.2] Geometry in current configuration
         tensor<double,1>      x = bfs * nborFields(all,range(idx_x,idx_z));
         tensor<double,2>     Dx = Dbfs.T() * nborFields(all,range(idx_x,idx_z));
-        // tensor<double,2>    DDx = DDbfs.T() * nborFields(all,range(idx_x,idx_z));
         tensor<double,1>  cross = Dx(1,all) * antisym3D * Dx(0,all);
         double             jac  = sqrt(cross*cross);
         tensor<double,1> normal = cross/jac;
@@ -733,7 +533,6 @@ namespace ias
 
 
         //Linear interpolation
-        // tensor<double,1> bfs_l = {1.0/3.0, 1.0/3.0, 1.0/3.0};
         tensor<double,2> Dbfs_l = {{-1.0, -1.0}, {1.0, 0.0}, {0.0, 1.0}};
         array<int,3> idx = {0,1,eNN-6}; //FIXME: this only works for subdivision surfaces
 
@@ -765,10 +564,8 @@ namespace ias
         tensor<double,5> ddnormal_l   = ddcross_l/jac_l - outer(dcross_l,djac_l/(jac_l*jac_l)).transpose({0,1,3,4,2}) - outer(djac_l/(jac_l*jac_l),dcross_l) - outer(ddjac_l/(jac_l*jac_l),cross_l) + 2.0/(jac_l*jac_l*jac_l) * outer(outer(djac_l,djac_l),cross_l);
         tensor<double,6> ddmetric_l   = 2.0 * product(dDx_l,dDx_l,{{3,3}}).transpose({0,1,3,4,2,5});
 
-        // cout << "HOLA" << endl;
 
-        double angle = 2.*(M_PI)/(eNN-6); //FIXME: this only works for subdivision surfaces +K0*jac0
-        // double angle = M_PI/3; //FIXME: this only works for subdivision surfaces +K0*jac0
+        double angle = 2.*(M_PI)/(eNN-6); //FIXME: this only works for subdivision surfaces
         tensor<double,2> DxR = {{1.0, 0.0}, {cos(angle), sin(angle)}};
         DxR *= sqrt(2.0*A/nElem/sin(angle));// / sqrt(c1_0*c1_0+c2_0*c2_0);
         tensor<double,2> metricR = DxR * DxR.T();
@@ -784,47 +581,6 @@ namespace ias
 
         rhs_l = 0.0;
         A_l = 0.0;
-        // double shear_factor_rhs{0.0};
-        // double shear_factor_matrix{0.0};
-        // if(shear > ale_max_shear)
-        // {            
-        //     tensor<double,2> dI1 = product(imetricR,dmetric_l,{{0,2},{1,3}});
-        //     tensor<double,4> ddI1 = product(imetricR,ddmetric_l,{{0,4},{1,5}});
-        //     tensor<double,2> dshear = 4.0/shear * ((J*J)/(I1*I1*I1) * dI1 - (J/jacR/(I1*I1)) * djac_l);
-        //     tensor<double,4> ddshear = 4.0/shear * (-3.0 * (J*J)/(I1*I1*I1*I1) * outer(dI1,dI1) + (J*J)/(I1*I1*I1) * ddI1 + 2.0 * (J/jacR/(I1*I1*I1)) * (outer(djac_l,dI1)+outer(dI1,djac_l)) - (1./(jacR*jacR)/(I1*I1)) * outer(djac_l,djac_l) - (J/jacR/(I1*I1)) * ddjac_l) - (1./shear) * outer(dshear,dshear);
-            
-        //     shear_factor_rhs = (shear-ale_max_shear) * (shear-ale_max_shear) / 3.0;
-        //     shear_factor_matrix = 2.0 * (shear-ale_max_shear) / 3.0;
-        //     energy += fill->w_sample * ale_penalty_shear * jacR * (shear-ale_max_shear) * (shear-ale_max_shear) * (shear-ale_max_shear)/deltat;
-        //     rhs_l += fill->w_sample * ale_penalty_shear * jacR * shear_factor_rhs * dshear; 
-        //     A_l  += fill->w_sample * ale_penalty_shear * jacR * shear_factor_rhs * ddshear;
-        //     A_l  += fill->w_sample * ale_penalty_shear * jacR * shear_factor_matrix * outer(dshear, dshear);
-        // }
-
-        // double jac_factor_rhs{0.0};
-        // double jac_factor_matrix{0.0};
-        // if(J < ale_min_stretch)
-        // {
-        //     jac_factor_rhs = -(ale_min_stretch-J) * (ale_min_stretch-J) / 3.0;
-        //     jac_factor_matrix = 2.0 * (ale_min_stretch-J) / 3.0;
-        //     energy += fill->w_sample * jacR * ale_penalty_stretch * (ale_min_stretch-J) * (ale_min_stretch-J) * (ale_min_stretch-J)/deltat/3.0;
-        // }
-        // else if(J > ale_max_stretch)
-        // {
-        //     jac_factor_rhs = (J-ale_max_stretch) * (J-ale_max_stretch) / 3.0;
-        //     jac_factor_matrix = 2.0 * (J-ale_max_stretch) / 3.0;
-        //     energy += fill->w_sample * jacR * ale_penalty_stretch * (J-ale_max_stretch) * (J-ale_max_stretch) * (J-ale_max_stretch)/deltat/3.0;
-        // }
-
-        // // cout << jacR << " " << jac << " " << J << endl;
-        // // cout << I1 << " " << shear << endl;
-
-        // rhs_l += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_rhs * djac_l;
-        // A_l  += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_rhs * ddjac_l;
-        // A_l  += fill->w_sample * ale_penalty_stretch * jacR * jac_factor_matrix * outer(djac_l/jacR,djac_l);
-
-
-        // cout << "HOLA" << endl;
 
         tensor<double,2> dI1 = product(imetricR,dmetric_l,{{0,2},{1,3}});
         tensor<double,4> ddI1 = product(imetricR,ddmetric_l,{{0,4},{1,5}});
@@ -841,18 +597,11 @@ namespace ias
 
             rhs_n(idx[i1],range(0,2)) += rhs_l(i1,all);
         }
-
-        // rhs_n(all,range(0,2)) += tfriction * fill->w_sample * jac0 * outer(bfs, (x-x0) * proj0);
-        // A_nn(all,range(0,2),all,range(0,2))  += tfriction * fill->w_sample * jac0 * outer(outer(bfs, bfs), proj0).transpose({0,2,1,3});
-
         rhs_n(all,range(0,2)) += tfriction * fill->w_sample * jac0 * outer(bfs, x-x0);
         A_nn(all,range(0,2),all,range(0,2))  += tfriction * fill->w_sample * jac0 * outer(outer(bfs, bfs), Identity(3)).transpose({0,2,1,3});
 
         rhs_n(all,range(0,2)) += elastRef * fill->w_sample * jac0 * outer(bfs, x-xR);
         A_nn(all,range(0,2),all,range(0,2))  += elastRef * fill->w_sample * jac0 * outer(outer(bfs, bfs), Identity(3)).transpose({0,2,1,3});
-
-        // rhs_n(all,range(0,2)) += nfriction * fill->w_sample * jac0 * outer(bfs,((x-x0)*normal0)*normal0);
-        // A_nn(all,range(0,2),all,range(0,2))  += nfriction * fill->w_sample * jac0 * outer(outer(bfs,bfs),outer(normal0,normal0)).transpose({0,2,1,3});
 
         double p = bfs * fill->nborFields(all,fill->idxNodeField("p"));
         rhs_n(all,range(0,2)) += fill->w_sample * jac0 * p * outer(bfs,normal0);
@@ -863,24 +612,6 @@ namespace ias
         double J0 = jac0/jacR;
         A_nn(all,3,all,3) += kappa * fill->w_sample * jac0 * outer(bfs,bfs);
  
-        // cout << std::scientific << eNN << " " << ln << " " << 2.0 / J0 * (ale_penalty_shear * product(curva0,imetricR,{{0,0},{1,1}}) +  ale_penalty_stretch * (J0-1) * J0 * product(curva0,imetric0,{{0,0},{1,1}})) << " " << ln/(2.0/J0  * (ale_penalty_shear * product(curva0,imetricR,{{0,0},{1,1}}) +  ale_penalty_stretch * (J0-1) * J0 * product(curva0,imetric0,{{0,0},{1,1}})))<< endl;
-        // cout << rhs_n << endl;
-
-        // // cout << A_nn(all,range(0,2),all,3) << endl;
-        // if(fill->sampID == 0)
-        // {
-        //     (*normalErr)(elemID) = 0.0;
-        //     (*_S)(elemID) = 0.0;
-        //     (*_J)(elemID) = 0.0;
-        //     (*_energy)(elemID) = 0.0;
-        // }
-
-        // (*normalErr)(elemID) += fill->w_sample * jac0 * abs((x-x0)*normal0) ;
-        // (*_S)(elemID) += fill->w_sample * shear * 2.0 ;
-        // (*_J)(elemID) += fill->w_sample * J  * 2.0 ;
-        // (*_energy)(elemID) += energy;
-        // cout << energy << " " << (*_energy)(elemID) << endl;
-
         fill->tissIntegrals(fill->idxTissIntegral("A")) += fill->w_sample * jac_l;
         fill->tissIntegrals(fill->idxTissIntegral("Em")) += fill->w_sample * jac * energy;
     }

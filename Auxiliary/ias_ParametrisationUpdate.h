@@ -90,14 +90,6 @@ namespace ias
             std::vector<Teuchos::RCP<Integration>> _integrations;
             std::vector<Teuchos::RCP<solvers::TrilinosAztecOO>> _linearSolvers;
             std::vector<Teuchos::RCP<solvers::NewtonRaphson>> _newtonRaphsons;
-            // std::vector<Tensor::tensor<double,2>> _x0;
-            // std::vector<Tensor::tensor<double,2>> _xR;
-            // std::vector<Tensor::tensor<double,1>> _normalErr;
-
-            // //FIXME: delete me
-            // std::vector<Tensor::tensor<double,1>> _S;
-            // std::vector<Tensor::tensor<double,1>> _J;
-            // std::vector<Tensor::tensor<double,1>> _energy;
 
             bool _remove_RBT{};
             bool _remove_RBR{};
