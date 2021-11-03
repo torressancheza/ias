@@ -69,7 +69,7 @@ namespace ias
                     _nameParams.push_back(nameParam);
                     _params.push_back(param);
                 }
-                void DestroyPreconditioner()
+                void recalculatePreconditioner()
                 {    _solver->DestroyPreconditioner();    }
                 /** @} */
             
