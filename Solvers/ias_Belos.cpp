@@ -59,7 +59,7 @@ namespace ias
             auto B = Teuchos::rcpFromRef(*_integration->getLinearProblem()->GetRHS());
             _problem = Teuchos::rcp(new Belos::LinearProblem<ST, MV, OP>(A, X, B));
 
-            Teuchos::ParameterList ifpackParams;
+            Teuchos::ParameterList ifpackParams; 
             for(size_t i = 0; i < _ifpackParams.size(); i++)
             {
                 //Try to transform the string into a number
@@ -67,12 +67,12 @@ namespace ias
                 char* p;
                 int converted =  (param, &p, 10);
                 if (*p) 
-                    ifpackParams->set(_ifpackNameParams[i], param);
+                    ifpackParams.set(_ifpackNameParams[i], param);
                 else 
-                    ifpackParams->set(_ifpackNameParams[i], converted);
+                    ifpackParams.set(_ifpackNameParams[i], converted);
             }
             Ifpack Factory;
-            _precond = rcp(Factory.Create(precondType, A.getRawPtr(), 0));
+            _precond = rcp(Factory.Create(_precondType, A.getRawPtr(), 0));
             _precond->SetParameters(ifpackParams);
             _belosPrecond = rcp (new Belos::EpetraPrecOp (_precond));
 

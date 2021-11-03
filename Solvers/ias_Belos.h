@@ -88,7 +88,7 @@ namespace ias
                 {    _solverType = solverType;    }
 
                 /*! @brief Set the preconditioner type*/
-                void setSolverType(std::string precondType)
+                void setPrecondType(std::string precondType)
                 {    _precondType = precondType;    }
 
                 void recalculatePreconditioner()
@@ -101,7 +101,7 @@ namespace ias
                 std::vector<std::string> _ifpackNameParams;
                 std::vector<std::string> _ifpackParams;
                 std::string _solverType = "GMRES";
-                std:.string _precondType = "ILU";
+                std::string _precondType = "ILU";
 
                 typedef double                ST;
                 typedef Epetra_MultiVector    MV;
