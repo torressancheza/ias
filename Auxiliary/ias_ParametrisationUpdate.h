@@ -19,6 +19,7 @@
 #include "ias_BasicStructures.h"
 #include "ias_Integration.h"
 #include "ias_AztecOO.h"
+#include "ias_Amesos.h"
 #include "ias_NewtonRaphson.h"
 
 namespace ias
@@ -88,7 +89,7 @@ namespace ias
             std::vector<Teuchos::RCP<Cell>> _cells;
             std::vector<Teuchos::RCP<Tissue>> _tissues;
             std::vector<Teuchos::RCP<Integration>> _integrations;
-            std::vector<Teuchos::RCP<solvers::TrilinosAztecOO>> _linearSolvers;
+            std::vector<Teuchos::RCP<solvers::Solver>> _linearSolvers;
             std::vector<Teuchos::RCP<solvers::NewtonRaphson>> _newtonRaphsons;
 
             bool _remove_RBT{};

@@ -17,6 +17,8 @@
 #include "ias_ParametrisationUpdate.h"
 #include "ias_BasicStructures.h"
 #include "ias_Integration.h"
+#include "ias_Amesos.h"
+#include "ias_Belos.h"
 #include "ias_AztecOO.h"
 #include "ias_NewtonRaphson.h"
 
@@ -119,12 +121,9 @@ namespace ias
                 integration->assemble();
                 _integrations.push_back(integration);
 
-                RCP<solvers::TrilinosAztecOO> linearSolver = rcp(new solvers::TrilinosAztecOO);
+                RCP<solvers::TrilinosBelos> linearSolver = rcp(new solvers::TrilinosBelos);
                 linearSolver->setIntegration(integration);
-                linearSolver->addAztecOOParameter("solver","gmres_condum"); //TODO: these options are pretty generic and should work in almost all cases... but the number of iterations and the tolerance should be read
-                linearSolver->addAztecOOParameter("precond","dom_decomp");
-                linearSolver->addAztecOOParameter("subdomain_solve","ilu");
-                linearSolver->addAztecOOParameter("output","none");
+                linearSolver->setSolverType("GMRES");
                 linearSolver->setMaximumNumberOfIterations(500);
                 linearSolver->setResidueTolerance(1.E-8);
                 linearSolver->Update();
@@ -132,7 +131,7 @@ namespace ias
 
                 RCP<solvers::NewtonRaphson> newtonRaphson = rcp(new solvers::NewtonRaphson);
                 newtonRaphson->setLinearSolver(linearSolver);
-                newtonRaphson->setSolutionTolerance(1.E-8); //TODO: read the parameters
+                newtonRaphson->setSolutionTolerance(1.E-8);
                 newtonRaphson->setResidueTolerance(1.E-8);
                 newtonRaphson->setMaximumNumberOfIterations(5);
                 newtonRaphson->setVerbosity(false);

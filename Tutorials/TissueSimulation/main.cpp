@@ -114,8 +114,6 @@ int main(int argc, char **argv)
         config.readInto(frictiont, "frictiont");
         config.readInto(frictionn, "frictionn");
         
-        config.readInto( lifetime, "lifetime");
-
         config.readInto(  totTime,   "totTime");
         config.readInto(   deltat,   "deltat");
         config.readInto(  stepFac,   "stepFac");
@@ -210,9 +208,9 @@ int main(int argc, char **argv)
         deltat = tissue->getTissField("deltat");
         for(auto cell: tissue->getLocalCells())
         {
-            cell->getNodeField("vx") *= deltat;
-            cell->getNodeField("vy") *= deltat;
-            cell->getNodeField("vz") *= deltat;
+            cell->getNodeField("vx") *= 0.0;//deltat;
+            cell->getNodeField("vy") *= 0.0;//deltat;
+            cell->getNodeField("vz") *= 0.0;//deltat;
         }
     }
     tissue->saveVTK("Cell","_t"+to_string(1));
@@ -296,7 +294,7 @@ int main(int argc, char **argv)
         else if(rec_str)
         {
             physicsIntegration->recalculateMatrixStructure();
-            physicsLinearSolver->DestroyPreconditioner();
+            physicsLinearSolver->recalculatePreconditioner();
             rec_str = false;
         }
         
@@ -310,9 +308,10 @@ int main(int argc, char **argv)
         if(tissue->getMyPart()==0)
             cout << "Solving for velocities" << endl;
         
-        physicsNewtonRaphson->solve();
+        // physicsNewtonRaphson->solve();
         conv = physicsNewtonRaphson->getConvergence();
-        
+        conv = true;
+
         auto finish_3 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_3 = finish_3 - finish_2;
         
@@ -334,7 +333,7 @@ int main(int argc, char **argv)
                 
                 time += deltat;
                 tissue->getTissField("time") = time;
-                tissue->getTissField("tConfin") += dt_tConfin * deltat;
+                // tissue->getTissField("tConfin") += dt_tConfin * deltat;
 
                 for(auto cell: tissue->getLocalCells())
                 {

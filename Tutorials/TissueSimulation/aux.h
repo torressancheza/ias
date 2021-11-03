@@ -19,6 +19,7 @@
 
 void internal(Teuchos::RCP<ias::SingleIntegralStr> fill);
 void interaction(Teuchos::RCP<ias::DoubleIntegralStr> fill);
+void computeForce(Teuchos::RCP<ias::DoubleIntegralStr> fill);
 
 inline double SmoothStep(double rc1, double rc2, double r)
 {

@@ -11,7 +11,7 @@
 #include <fstream>
 #include <random>
 
-#include <AztecOO.h>
+#include <ias_Belos.h>
 
 #include "aux.h"
 #include "ias_ParametrisationUpdate.h"
@@ -187,12 +187,19 @@ int main(int argc, char **argv)
     physicsIntegration->setCellDOFsInInteractions(false);
     physicsIntegration->Update();
 
-    RCP<solvers::TrilinosAztecOO> physicsLinearSolver = rcp(new solvers::TrilinosAztecOO);
+    RCP<solvers::TrilinosBelos> physicsLinearSolver = rcp(new solvers::TrilinosBelos);
     physicsLinearSolver->setIntegration(physicsIntegration);
-    physicsLinearSolver->addAztecOOParameter("solver","gmres");
-    physicsLinearSolver->addAztecOOParameter("precond","dom_decomp");
-    physicsLinearSolver->addAztecOOParameter("subdomain_solve","ilu");
-    physicsLinearSolver->addAztecOOParameter("output","none");
+    physicsLinearSolver->setSolverType("GMRES");
+    // physicsLinearSolver->addBelosParameter( "Num Blocks", "300" );               // Maximum number of blocks in Krylov factorization
+    // physicsLinearSolver->addBelosParameter( "Block Size", "1");                  // Blocksize to be used by iterative solver
+    // physicsLinearSolver->addBelosParameter( "Maximum Restarts", "10" );           // Maximum number of restarts allowed
+    // physicsLinearSolver->addBelosParameter( "Verbosity", "33");
+    // physicsLinearSolver->addBelosParameter( "Output Frequency", "1" );
+    // physicsLinearSolver->addBelosParameter("Output Style", "1" );
+    // physicsLinearSolver->addAztecOOParameter("solver","gmres");
+    // physicsLinearSolver->addAztecOOParameter("precond","dom_decomp");
+    // physicsLinearSolver->addAztecOOParameter("subdomain_solve","ilu");
+    // physicsLinearSolver->addAztecOOParameter("output","none");
     physicsLinearSolver->setMaximumNumberOfIterations(5000);
     physicsLinearSolver->setResidueTolerance(1.E-8);
     physicsLinearSolver->Update();
@@ -241,7 +248,7 @@ int main(int argc, char **argv)
         else if(rec_str)
         {
             physicsIntegration->recalculateMatrixStructure();
-            physicsLinearSolver->DestroyPreconditioner();
+            physicsLinearSolver->recalculatePreconditioner();
             rec_str = false;
         }
         
