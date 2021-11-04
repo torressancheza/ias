@@ -59,7 +59,6 @@ namespace ias
             auto B = Teuchos::rcpFromRef(*_integration->getLinearProblem()->GetRHS());
             _problem = Teuchos::rcp(new Belos::LinearProblem<ST, MV, OP>(A, X, B));
 
-            Teuchos::ParameterList ifpackParams;
             for(size_t i = 0; i < _ifpackParams.size(); i++)
             {
                 //Try to transform the string into a number
@@ -67,14 +66,10 @@ namespace ias
                 char* p;
                 int converted =  (param, &p, 10);
                 if (*p) 
-                    ifpackParams->set(_ifpackNameParams[i], param);
+                    _ifpackParamList.set(_ifpackNameParams[i], param);
                 else 
-                    ifpackParams->set(_ifpackNameParams[i], converted);
+                    _ifpackParamList.set(_ifpackNameParams[i], converted);
             }
-            Ifpack Factory;
-            _precond = rcp(Factory.Create(precondType, A.getRawPtr(), 0));
-            _precond->SetParameters(ifpackParams);
-            _belosPrecond = rcp (new Belos::EpetraPrecOp (_precond));
 
             _problem->setLeftPrec(_belosPrecond);
 
@@ -105,17 +100,19 @@ namespace ias
             using Teuchos::RCP;
             using Teuchos::rcp;
 
-            if(_recPrec)
-            {
-                _precond->Initialize();    
-                _precond->Compute();
-                _belosPrecond = rcp (new Belos::EpetraPrecOp (_precond));
-            }
-
-
             auto A = Teuchos::rcpFromRef(*_integration->getLinearProblem()->GetMatrix());
             auto X = Teuchos::rcpFromRef(*_integration->getLinearProblem()->GetLHS());
             auto B = Teuchos::rcpFromRef(*_integration->getLinearProblem()->GetRHS());
+
+            if(_recPrec)
+            {
+                Ifpack Factory;
+                _precond = rcp(Factory.Create(_precondType, A.getRawPtr(), 0));
+                _precond->SetParameters(_ifpackParamList);
+                _precond->Initialize();
+                _precond->Compute();
+                _belosPrecond = rcp (new Belos::EpetraPrecOp (_precond));
+            }
 
             _problem->setOperator(A);
             _problem->setProblem(X, B);
