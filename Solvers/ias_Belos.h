@@ -112,6 +112,7 @@ namespace ias
                 Teuchos::RCP<Belos::LinearProblem<ST, MV, OP >> _problem = Teuchos::null;
                 Teuchos::RCP<Belos::SolverManager<ST, MV, OP >> _solver = Teuchos::null;
                 bool _recPrec{true};
+                Teuchos::ParameterList _ifpackParamList; 
         };
     }
 }
