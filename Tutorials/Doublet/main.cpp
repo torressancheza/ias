@@ -206,9 +206,9 @@ int main(int argc, char **argv)
     
     RCP<solvers::NewtonRaphson> physicsNewtonRaphson = rcp(new solvers::NewtonRaphson);
     physicsNewtonRaphson->setLinearSolver(physicsLinearSolver);
-    physicsNewtonRaphson->setSolutionTolerance(1.E-8);
-    physicsNewtonRaphson->setResidueTolerance(1.E-8);
-    physicsNewtonRaphson->setMaximumNumberOfIterations(5);
+    physicsNewtonRaphson->setSolutionTolerance(nr_soltol);
+    physicsNewtonRaphson->setResidueTolerance(nr_restol);
+    physicsNewtonRaphson->setMaximumNumberOfIterations(nr_maxite);
     physicsNewtonRaphson->setVerbosity(true);
     physicsNewtonRaphson->Update();
 
