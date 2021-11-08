@@ -116,6 +116,7 @@ int main(int argc, char **argv)
 
         tissueGen->addCellFields({"P", "P0"});
         tissueGen->addCellFields({"intEL","intCL","intSt","tension","kappa","viscosity","frictiont","frictionn"});
+        tissueGen->addCellFields({"V0"});
         
         tissueGen->addTissFields({"time", "deltat"});
         tissueGen->addTissField("Ei");
@@ -144,6 +145,8 @@ int main(int argc, char **argv)
             cell->getCellField("viscosity") = viscosity;
             cell->getCellField("frictiont") = frictiont;
             cell->getCellField("frictionn") = frictionn;
+
+            cell->getCellField("V0") = 4.0*M_PI/3.0;
         }
         tissue->saveVTK("Cell","_t"+to_string(0));
     }
@@ -186,6 +189,7 @@ int main(int argc, char **argv)
     physicsIntegration->setTissIntegralFields({"Ei"});
     physicsIntegration->setCellDOFsInInteractions(false);
     physicsIntegration->Update();
+
 
     RCP<solvers::TrilinosBelos> physicsLinearSolver = rcp(new solvers::TrilinosBelos);
     physicsLinearSolver->setIntegration(physicsIntegration);
