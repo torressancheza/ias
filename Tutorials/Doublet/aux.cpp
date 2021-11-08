@@ -120,9 +120,15 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     A_nn  += fill->w_sample * tension * ddjac;
 
     // [3.4] Volume constraint
+    double V0 = cellFields(fill->idxCellField("V0"));
+
     rhs_n          += fill->w_sample * pressure * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
-    rhs_g(0)       += deltat * (fill->w_sample * (jac * xn-jacR * xRnR)/3.0);
-        
+    rhs_g(0)       += deltat * (fill->w_sample * (jac * xn)/3.0);
+
+    //only add this once
+    if(fill->elemID == 0 and fill->sampID == 0)
+    rhs_g(0)       += deltat * V0;
+
     A_nn           += fill->w_sample * pressure * deltat / 3.0 * (ddjac * xn + outer(djac,outer(bfs,normal)) + outer(outer(bfs,normal),djac) + outer(djac,dnormal*x) + outer(dnormal*x,djac) + jac * outer(dnormal,bfs).transpose({0,1,3,2}) +  jac * outer(bfs,dnormal).transpose({0,3,1,2}) + jac * ddnormal * x);
     A_ng(all,all,0) += fill->w_sample            * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
     A_gn = A_ng.transpose({2,0,1});
