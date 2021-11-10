@@ -62,9 +62,38 @@ namespace ias
         {
             for(auto cell: _tissue->getLocalCells())
             {
-                RCP<Cell> newCell = rcp(new Cell);
+                RCP<Tissue> cellTissue = rcp(new Tissue(MPI_COMM_SELF));
+                cellTissue->addCellToTissue(cell);
+                cellTissue->setTissueFieldNames({"A","X","Y","Z","A0","X0","Y0","Z0","LX","LY","LZ","Ixx","Ixy","Ixz","Iyy","Iyz","Izz"});
+                cellTissue->Update();
+                cellTissue->calculateCellCellAdjacency(1.0);
+                _tissues.push_back(cellTissue);
+
+                RCP<Integration> integration = rcp(new Integration);
+                integration->setTissue(cellTissue);
+                integration->setNodeDOFs({"x","y","z"});
+                integration->setTissIntegralFields({"A","X","Y","Z","A0","X0","Y0","Z0","LX","LY","LZ","Ixx","Ixy","Ixz","Iyy","Iyz","Izz"});
+                integration->setSingleIntegrand(_centreOfMass);
+                integration->setNumberOfIntegrationPointsSingleIntegral(3); 
+                integration->setNumberOfIntegrationPointsDoubleIntegral(1);
+                integration->userAuxiliaryObjects.push_back(&_dispFieldNames);
+                integration->Update();
+                _integrations.push_back(integration);
+
+                if(_method == Method::Eulerian)
+                {
+                    RCP<solvers::TrilinosBelos> linearSolver = rcp(new solvers::TrilinosBelos);
+                    linearSolver->setIntegration(integration);
+                    linearSolver->setSolverType("GMRES");
+                    linearSolver->setMaximumNumberOfIterations(500);
+                    linearSolver->setResidueTolerance(1.E-8);
+                    linearSolver->Update();
+                    _linearSolvers.push_back(linearSolver);
+                }
+
                 if(_method == Method::ALE)
                 {
+                    RCP<Cell> newCell = rcp(new Cell);
                     newCell->setBasisFunctionType(cell->getBasisFunctionType());
                     newCell->_connec = cell->_connec;
                     newCell->_nodeFields.resize(cell->_nodeFields.shape()[0],cell->_nodeFields.shape()[1]);
@@ -86,58 +115,50 @@ namespace ias
                     newCell->getNodeField("zR") = newCell->getNodeField("z");
                         
                     _cells.push_back(newCell);
-                }
-
-                RCP<Tissue> cellTissue = rcp(new Tissue(MPI_COMM_SELF));
-                if(_method == Method::ALE)
+                    
+                    RCP<Tissue> cellTissue = rcp(new Tissue(MPI_COMM_SELF));
                     cellTissue->addCellToTissue(newCell);
-                else
-                    cellTissue->addCellToTissue(cell);
-                cellTissue->setTissueFieldNames({"nElem","deltat","ale_penalty_shear","ale_penalty_stretch","tfriction","elastRef","A","X","Y","Z","A0","X0","Y0","Z0","Em","LX","LY","LZ","Ixx","Ixy","Ixz","Iyy","Iyz","Izz"});
-                cellTissue->Update();
-                cellTissue->calculateCellCellAdjacency(1.0);
-                cellTissue->getTissField("deltat") = 1.E-4;
-                cellTissue->getTissField("ale_penalty_shear")  = _penaltyShear;
-                cellTissue->getTissField("ale_penalty_stretch")  = _penaltyStretch;
-                cellTissue->getTissField("tfriction") = _tfriction;
-                cellTissue->getTissField("elastRef") = _elastRef;
-                cellTissue->getTissField("Em") = 0.0;
-                cellTissue->getTissField("nElem") = cell->getNumberOfElements();
-                _tissues.push_back(cellTissue);
-    
-                RCP<Integration> integration = rcp(new Integration);
-                integration->setTissue(cellTissue);
-                if(_method == Method::ALE)
+                    cellTissue->setTissueFieldNames({"A","nElem","deltat","ale_penalty_shear","ale_penalty_stretch","tfriction","elastRef","Em"});
+                    cellTissue->Update();
+                    cellTissue->calculateCellCellAdjacency(1.0);
+                    cellTissue->getTissField("deltat") = 1.E-4;
+                    cellTissue->getTissField("ale_penalty_shear")  = _penaltyShear;
+                    cellTissue->getTissField("ale_penalty_stretch")  = _penaltyStretch;
+                    cellTissue->getTissField("tfriction") = _tfriction;
+                    cellTissue->getTissField("elastRef") = _elastRef;
+                    cellTissue->getTissField("Em") = 0.0;
+                    cellTissue->getTissField("nElem") = cell->getNumberOfElements();
+                    _tissues.push_back(cellTissue);
+                                    
+                    RCP<Integration> integration = rcp(new Integration);
+                    integration->setTissue(cellTissue);
                     integration->setNodeDOFs({"x","y","z","p"});
-                else
-                    integration->setNodeDOFs({"x","y","z"});
-                integration->setTissIntegralFields({"A","X","Y","Z","A0","X0","Y0","Z0","Em","LX","LY","LZ","Ixx","Ixy","Ixz","Iyy","Iyz","Izz"});
-                integration->setSingleIntegrand(_updateFunction);
-                integration->setNumberOfIntegrationPointsSingleIntegral(3); //TODO: make it a parameter to set
-                integration->setNumberOfIntegrationPointsDoubleIntegral(1);
-                integration->userAuxiliaryObjects.push_back(&_dispFieldNames);
-                integration->Update();
-                integration->computeSingleIntegral();
-                integration->assemble();
-                _integrations.push_back(integration);
+                    integration->setSingleIntegrand(_updateFunction);
+                    integration->setTissIntegralFields({"A","Em"});
+                    integration->setNumberOfIntegrationPointsSingleIntegral(3); 
+                    integration->setNumberOfIntegrationPointsDoubleIntegral(1);
+                    integration->Update();
+                    integration->computeSingleIntegral();
+                    integration->assemble();
+                    _integrations.push_back(integration);
+                
+                    RCP<solvers::TrilinosBelos> linearSolver = rcp(new solvers::TrilinosBelos);
+                    linearSolver->setIntegration(integration);
+                    linearSolver->setSolverType("GMRES");
+                    linearSolver->setMaximumNumberOfIterations(500);
+                    linearSolver->setResidueTolerance(1.E-8);
+                    linearSolver->Update();
+                    _linearSolvers.push_back(linearSolver);
 
-                RCP<solvers::TrilinosBelos> linearSolver = rcp(new solvers::TrilinosBelos);
-                linearSolver->setIntegration(integration);
-                linearSolver->setSolverType("GMRES");
-                linearSolver->setMaximumNumberOfIterations(500);
-                linearSolver->setResidueTolerance(1.E-8);
-                linearSolver->Update();
-                _linearSolvers.push_back(linearSolver);
-
-                RCP<solvers::NewtonRaphson> newtonRaphson = rcp(new solvers::NewtonRaphson);
-                newtonRaphson->setLinearSolver(linearSolver);
-                newtonRaphson->setSolutionTolerance(1.E-8);
-                newtonRaphson->setResidueTolerance(1.E-8);
-                newtonRaphson->setMaximumNumberOfIterations(5);
-                newtonRaphson->setVerbosity(false);
-                newtonRaphson->Update();
-
-                _newtonRaphsons.push_back(newtonRaphson);
+                    RCP<solvers::NewtonRaphson> newtonRaphson = rcp(new solvers::NewtonRaphson);
+                    newtonRaphson->setLinearSolver(linearSolver);
+                    newtonRaphson->setSolutionTolerance(1.E-8);
+                    newtonRaphson->setResidueTolerance(1.E-8);
+                    newtonRaphson->setMaximumNumberOfIterations(5);
+                    newtonRaphson->setVerbosity(false);
+                    newtonRaphson->Update();
+                    _newtonRaphsons.push_back(newtonRaphson);
+                }    
             }
         }
         
@@ -166,11 +187,18 @@ namespace ias
             double &A = vMPI[0], &X = vMPI[1], &Y = vMPI[2], &Z = vMPI[3];
             double &LX = lMPI[0], &LY = lMPI[1], &LZ = lMPI[2];
             double &Ixx = iMPI[0], &Ixy = iMPI[1], &Ixz = iMPI[2], &Iyy = iMPI[3], &Iyz = iMPI[4], &Izz = iMPI[5];
+
+            int n{};
             for(auto integration: _integrations)
             {
+                if(_method == Method::ALE and n % 2 == 1)
+                {
+                    n++;
+                    continue;
+                }
+
                 integration->InitialiseTissIntegralFields(0.0);
                 integration->InitialiseCellIntegralFields(0.0);
-                integration->setSingleIntegrand(_centreOfMass);
                 integration->computeSingleIntegral();
                 integration->assemble();
 
@@ -194,10 +222,9 @@ namespace ias
                 Iyy += integration->getTissue()->getTissField("Iyy");
                 Iyz += integration->getTissue()->getTissField("Iyz");
                 Izz += integration->getTissue()->getTissField("Izz");
-
-                integration->setSingleIntegrand(_updateFunction);
+                n++;
             }
-
+            
             MPI_Allreduce(MPI_IN_PLACE, vMPI0.data(), 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
             MPI_Allreduce(MPI_IN_PLACE, vMPI.data(), 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
             MPI_Allreduce(MPI_IN_PLACE, lMPI.data(), 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -217,7 +244,6 @@ namespace ias
 
             for(auto cell: _tissue->getLocalCells())
             {
-
                 if(_remove_RBT)
                 {
                     cell->getNodeField(_dispFieldNames[0]) -= V(0);
@@ -260,6 +286,8 @@ namespace ias
                 {
                     for(auto linearSolver: _linearSolvers)
                     {
+                        linearSolver->getIntegration()->setSingleIntegrand(_updateFunction);
+
                         linearSolver->getIntegration()->InitialiseTissIntegralFields(0.0);
                         linearSolver->getIntegration()->InitialiseCellIntegralFields(0.0);
                         linearSolver->getIntegration()->computeSingleIntegral();
@@ -276,6 +304,8 @@ namespace ias
                         conv = linearSolver->getConvergence();
                         if(conv)
                             linearSolver->getIntegration()->setSolToDOFs();
+
+                        linearSolver->getIntegration()->setSingleIntegrand(_centreOfMass);
                     }
                     break;
                 }
