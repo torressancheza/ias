@@ -13,6 +13,12 @@
 
 #include <Epetra_MpiComm.h>
 
+#include <vtkDistancePolyDataFilter.h>
+#include <vtkPolyDataWriter.h>
+#include <vtkNew.h>
+#include <vtkPointLocator.h>
+#include <vtkIdList.h>
+
 #include "ias_Integration.h"
 #include "ias_BasicStructures.h"
 namespace ias
@@ -297,7 +303,7 @@ namespace ias
         
         for(size_t inte = 0; inte < _tissue->_inters[_tissue->getMyPart()].size(); inte++)
         {
-            if(_tissue->_elems_inte.size() == 0)
+            if(_elems_inte.size() == 0)
                 throw runtime_error("Integration::computeDoubleIntegral: there are no interacting elements. Did you forget to call calculateInteractingElements?");
             
             int glo_n = _tissue->_inters[_tissue->getMyPart()][inte].first;
@@ -306,7 +312,7 @@ namespace ias
             if (glo_n == glo_m)
                 continue;
             
-            if(_tissue->_elems_inte[inte].size() == 0)
+            if(_elems_inte[inte].size() == 0)
                 continue;
             
             RCP<Cell> cell_1 = _tissue->GetCell(glo_n);
@@ -473,7 +479,12 @@ namespace ias
                 int e0 = -1;
                 int   eNN_1{};
                 int*  adjEN_1 = nullptr;
-                
+                int g0 = -1;
+                int   eNN_2{};
+                int*  adjEN_2 = nullptr;
+                std::vector<std::vector<std::vector<double>>> *savedBFs_type_1;
+                std::vector<std::vector<std::vector<double>>> *savedBFs_type_2;
+
                 tensor<double,1> loc_tissIntegrals(_tissIntegralIdx.size());
                 tensor<double,1> cellIntegrals_1(_cellIntegralIdx.size());
                 tensor<double,1> cellIntegrals_2(_cellIntegralIdx.size());
@@ -482,156 +493,161 @@ namespace ias
                 cellIntegrals_2 = 0.0;
 
                 #pragma omp for
-                for(size_t h = 0; h <  _tissue->_elems_inte[inte].size(); h++)
+                for(size_t h = 0; h <  _elems_inte[inte].size(); h++)
                 {
-                    auto elems =  _tissue->_elems_inte[inte][h];
-                    int e = elems.first;
 
-                    if(e != e0)
+                    int e =  _elems_inte[inte][h][0];
+                    int g =  _elems_inte[inte][h][1];
+                    if(e != e0 or g != g0)
                     {
-                        if(e0 != -1)
+                        if(h>0)
                         {
-                            loc_tissIntegrals += singIntStr_1->tissIntegrals;
-                            cellIntegrals_1 += singIntStr_1->cellIntegrals;
+                            if(e != e0)
+                            {
+                                loc_tissIntegrals += singIntStr_1->tissIntegrals;
+                                cellIntegrals_1 += singIntStr_1->cellIntegrals;
+                                
+                                #pragma omp critical
+                                AssembleElementalVector( offsetDOFs_1,  eNN_1,  nNodeDOFs, adjEN_1, singIntStr_1->vec_n.data(), _vector);
+                                #pragma omp critical
+                                _assembleElementalMatrix( offsetDOFs_1,    offsetDOFs_1, eNN_1, eNN_1,  nNodeDOFs,  nNodeDOFs, adjEN_1, adjEN_1, singIntStr_1->mat_nn.data(), _matrix );
+                                
+                                if(_cellDOFsInt)
+                                {
+                                    #pragma omp critical
+                                    AssembleElementalVector( offsetglobFields_1,     1, nCellDOFs,  &dummy, singIntStr_1->vec_c.data(), _vector);
+
+                                    #pragma omp critical
+                                    _assembleElementalMatrix( offsetDOFs_1,   offsetglobFields_1, eNN_1,     1,  nNodeDOFs, nCellDOFs, adjEN_1,  &dummy, singIntStr_1->mat_nc.data(), _matrix );
+                                    #pragma omp critical
+                                    _assembleElementalMatrix( offsetglobFields_1,   offsetDOFs_1,     1, eNN_1, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_1, singIntStr_1->mat_cn.data(), _matrix );
+                                    #pragma omp critical
+                                    _assembleElementalMatrix( offsetglobFields_1,  offsetglobFields_1,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, singIntStr_1->mat_cc.data(), _matrix );
+                                }
+                            }
+                            if(g != g0)
+                            {
+                                loc_tissIntegrals += singIntStr_2->tissIntegrals;
+                                cellIntegrals_2 += singIntStr_2->cellIntegrals;
+                                
+                                //Assemble
+                                #pragma omp critical
+                                AssembleElementalVector(   offsetDOFs_2, eNN_2,  nNodeDOFs, adjEN_2, singIntStr_2->vec_n.data(), _vector);
+                                
+                                #pragma omp critical
+                                _assembleElementalMatrix( offsetDOFs_2,    offsetDOFs_2, eNN_2, eNN_2,  nNodeDOFs,  nNodeDOFs, adjEN_2, adjEN_2, singIntStr_2->mat_nn.data(), _matrix );
+                                
+                                if(_cellDOFsInt)
+                                {
+                                    #pragma omp critical
+                                    AssembleElementalVector(  offsetglobFields_2,     1, nCellDOFs,  &dummy, singIntStr_2->vec_c.data(), _vector);
+
+                                    #pragma omp critical
+                                    _assembleElementalMatrix( offsetDOFs_2,   offsetglobFields_2, eNN_2,     1,  nNodeDOFs, nCellDOFs, adjEN_2,  &dummy, singIntStr_2->mat_nc.data(), _matrix );
+                                    #pragma omp critical
+                                    _assembleElementalMatrix( offsetglobFields_2,   offsetDOFs_2,     1, eNN_2, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_2, singIntStr_2->mat_cn.data(), _matrix );
+                                    #pragma omp critical
+                                    _assembleElementalMatrix( offsetglobFields_2,  offsetglobFields_2,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, singIntStr_2->mat_cc.data(), _matrix );
+                                }
+                            }
+
+                            #pragma omp critical
+                            _assembleElementalMatrix( offsetDOFs_1, offsetDOFs_2, eNN_1, eNN_2,  nNodeDOFs,  nNodeDOFs, adjEN_1, adjEN_2, doubIntStr->mat_n1n2.data(), _matrix );
                             
                             #pragma omp critical
-                            AssembleElementalVector( offsetDOFs_1,  eNN_1,  nNodeDOFs, adjEN_1, singIntStr_1->vec_n.data(), _vector);
-                            #pragma omp critical
-                            _assembleElementalMatrix( offsetDOFs_1,    offsetDOFs_1, eNN_1, eNN_1,  nNodeDOFs,  nNodeDOFs, adjEN_1, adjEN_1, singIntStr_1->mat_nn.data(), _matrix );
-                            
+                            _assembleElementalMatrix( offsetDOFs_2, offsetDOFs_1, eNN_2, eNN_1,  nNodeDOFs,  nNodeDOFs, adjEN_2, adjEN_1, doubIntStr->mat_n2n1.data(), _matrix );
+
                             if(_cellDOFsInt)
                             {
                                 #pragma omp critical
-                                AssembleElementalVector( offsetglobFields_1,     1, nCellDOFs,  &dummy, singIntStr_1->vec_c.data(), _vector);
+                                _assembleElementalMatrix(offsetDOFs_1,  offsetglobFields_2, eNN_1,     1,  nNodeDOFs, nCellDOFs, adjEN_1,  &dummy, doubIntStr->mat_n1c2.data(), _matrix);
+                                #pragma omp critical
+                                _assembleElementalMatrix(offsetglobFields_2,  offsetDOFs_1,     1, eNN_1, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_1, doubIntStr->mat_c2n1.data(), _matrix);
 
                                 #pragma omp critical
-                                _assembleElementalMatrix( offsetDOFs_1,   offsetglobFields_1, eNN_1,     1,  nNodeDOFs, nCellDOFs, adjEN_1,  &dummy, singIntStr_1->mat_nc.data(), _matrix );
+                                _assembleElementalMatrix( offsetglobFields_1, offsetDOFs_2,    1, eNN_2, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_2,  doubIntStr->mat_c1n2.data(), _matrix);
                                 #pragma omp critical
-                                _assembleElementalMatrix( offsetglobFields_1,   offsetDOFs_1,     1, eNN_1, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_1, singIntStr_1->mat_cn.data(), _matrix );
+                                _assembleElementalMatrix(offsetDOFs_2,  offsetglobFields_1, eNN_2,     1,  nNodeDOFs, nCellDOFs, adjEN_2,  &dummy, doubIntStr->mat_n2c1.data(), _matrix);
                                 #pragma omp critical
-                                _assembleElementalMatrix( offsetglobFields_1,  offsetglobFields_1,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, singIntStr_1->mat_cc.data(), _matrix );
+                                _assembleElementalMatrix(offsetglobFields_1,   offsetglobFields_2,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, doubIntStr->mat_c1c2.data(), _matrix);
+                                #pragma omp critical
+                                _assembleElementalMatrix(offsetglobFields_2,   offsetglobFields_1,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, doubIntStr->mat_c2c1.data(), _matrix);
                             }
                         }
-                        
-                        eNN_1 = cell_1->_bfs->getNumberOfNeighbours(e);
-                        adjEN_1 = cell_1->_bfs->getNeighbours(e);
-                        
-                        
-                        singIntStr_1->elemID = e;
-                        singIntStr_1->eNN    = eNN_1;
-                        singIntStr_1->nborFields.resize(eNN_1,nNodeFields_1);
-                        for(int i=0; i < eNN_1; i++)
-                            singIntStr_1->nborFields(i,all)   = nodeFields_1(adjEN_1[i],all);
 
-                        singIntStr_1->vec_n.resize(eNN_1,nNodeDOFs);
-                        singIntStr_1->vec_c.resize(nCellDOFs);
-                        singIntStr_1->mat_nn.resize(eNN_1,nNodeDOFs,eNN_1,nNodeDOFs);
-                        singIntStr_1->mat_nc.resize(eNN_1,nNodeDOFs,nCellDOFs);
-                        singIntStr_1->mat_cn.resize(nCellDOFs,eNN_1,nNodeDOFs);
-                        singIntStr_1->mat_cc.resize(nCellDOFs,nCellDOFs);
-                        
-                        std::fill(v_outputVector_1.begin(),v_outputVector_1.end(),0.0);
-                        std::fill(v_outputMatrix_1.begin(),v_outputMatrix_1.end(),0.0);
-                        std::fill(v_outputIntegrals_1.begin(),v_outputIntegrals_1.end(),0.0);
-                    }
-                    
-                    int g = elems.second;
-                    singIntStr_2->elemID = g;
-
-                    int   eNN_2   = cell_2->_bfs->getNumberOfNeighbours(g);
-                    int*  adjEN_2 = cell_2->_bfs->getNeighbours(g);
-
-                    singIntStr_2->eNN    = eNN_2;
-                    
-                    singIntStr_2->nborFields.resize(eNN_2,nNodeFields_2);
-                    for(int i=0; i < eNN_2; i++)
-                        singIntStr_2->nborFields(i,all)   = nodeFields_2(adjEN_2[i],all);
-                
-                    singIntStr_2->vec_n.resize(eNN_2,nNodeDOFs);
-                    singIntStr_2->vec_c.resize(nCellDOFs);
-                    singIntStr_2->mat_nn.resize(eNN_2,nNodeDOFs,eNN_2,nNodeDOFs);
-                    singIntStr_2->mat_nc.resize(eNN_2,nNodeDOFs,nCellDOFs);
-                    singIntStr_2->mat_cn.resize(nCellDOFs,eNN_2,nNodeDOFs);
-                    singIntStr_2->mat_cc.resize(nCellDOFs,nCellDOFs);
-                    
-                    std::fill(v_outputVector_2.begin(),v_outputVector_2.end(),0.0);
-                    std::fill(v_outputMatrix_2.begin(),v_outputMatrix_2.end(),0.0);
-                    std::fill(v_outputIntegrals_2.begin(),v_outputIntegrals_2.end(),0.0);
-
-                    doubIntStr->mat_n1n2.resize(eNN_1,nNodeDOFs,eNN_2,nNodeDOFs);
-                    doubIntStr->mat_n1c2.resize(eNN_1,nNodeDOFs,nCellDOFs);
-                    doubIntStr->mat_c1n2.resize(nCellDOFs,eNN_2,nNodeDOFs);
-                    doubIntStr->mat_c1c2.resize(nCellDOFs,nCellDOFs);
-                    doubIntStr->mat_n2n1.resize(eNN_2,nNodeDOFs,eNN_1,nNodeDOFs);
-                    doubIntStr->mat_n2c1.resize(eNN_2,nNodeDOFs,nCellDOFs);
-                    doubIntStr->mat_c2n1.resize(nCellDOFs,eNN_1,nNodeDOFs);
-                    doubIntStr->mat_c2c1.resize(nCellDOFs,nCellDOFs);
-                    
-                    std::fill(v_outputMatrix_i.begin(),v_outputMatrix_i.end(),0.0);
-                    
-                    auto& savedBFs_type_1 = _savedBFs_intera[cell_1->_bfs->getElementType(e)];
-                    auto& savedBFs_type_2 = _savedBFs_intera[cell_2->_bfs->getElementType(g)];
-
-                    for(size_t k=0; k < _wSamples_intera.size(); k++)
-                    {
-                        singIntStr_1->bfs = savedBFs_type_1[k];
-                        singIntStr_1->w_sample = _wSamples_intera[k];
-
-                        for(size_t l=0; l < _wSamples_intera.size(); l++)
+                        if(e!=e0)
                         {
-                            singIntStr_2->bfs = savedBFs_type_2[l];
-                            singIntStr_2->w_sample = _wSamples_intera[l];
-                            _doubleIntegrand(doubIntStr);
+                            eNN_1 = cell_1->_bfs->getNumberOfNeighbours(e);
+                            adjEN_1 = cell_1->_bfs->getNeighbours(e);
+                            
+                            savedBFs_type_1 = &(_savedBFs_intera[cell_1->_bfs->getElementType(e)]);
+
+                            singIntStr_1->elemID = e;
+                            singIntStr_1->eNN    = eNN_1;
+                            singIntStr_1->nborFields.resize(eNN_1,nNodeFields_1);
+                            for(int i=0; i < eNN_1; i++)
+                                singIntStr_1->nborFields(i,all)   = nodeFields_1(adjEN_1[i],all);
+
+                            singIntStr_1->vec_n.resize(eNN_1,nNodeDOFs);
+                            singIntStr_1->vec_c.resize(nCellDOFs);
+                            singIntStr_1->mat_nn.resize(eNN_1,nNodeDOFs,eNN_1,nNodeDOFs);
+                            singIntStr_1->mat_nc.resize(eNN_1,nNodeDOFs,nCellDOFs);
+                            singIntStr_1->mat_cn.resize(nCellDOFs,eNN_1,nNodeDOFs);
+                            singIntStr_1->mat_cc.resize(nCellDOFs,nCellDOFs);
+                            
+                            std::fill(v_outputVector_1.begin(),v_outputVector_1.end(),0.0);
+                            std::fill(v_outputMatrix_1.begin(),v_outputMatrix_1.end(),0.0);
+                            std::fill(v_outputIntegrals_1.begin(),v_outputIntegrals_1.end(),0.0);
                         }
+
+                        if(g != g0)
+                        {
+                            eNN_2   = cell_2->_bfs->getNumberOfNeighbours(g);
+                            adjEN_2 = cell_2->_bfs->getNeighbours(g);
+                            savedBFs_type_2 = &(_savedBFs_intera[cell_2->_bfs->getElementType(g)]);
+
+                            singIntStr_2->elemID = g;
+                            singIntStr_2->eNN    = eNN_2;
+                            singIntStr_2->nborFields.resize(eNN_2,nNodeFields_2);
+                            for(int i=0; i < eNN_2; i++)
+                                singIntStr_2->nborFields(i,all)   = nodeFields_2(adjEN_2[i],all);
+                        
+                            singIntStr_2->vec_n.resize(eNN_2,nNodeDOFs);
+                            singIntStr_2->vec_c.resize(nCellDOFs);
+                            singIntStr_2->mat_nn.resize(eNN_2,nNodeDOFs,eNN_2,nNodeDOFs);
+                            singIntStr_2->mat_nc.resize(eNN_2,nNodeDOFs,nCellDOFs);
+                            singIntStr_2->mat_cn.resize(nCellDOFs,eNN_2,nNodeDOFs);
+                            singIntStr_2->mat_cc.resize(nCellDOFs,nCellDOFs);
+                            
+                            std::fill(v_outputVector_2.begin(),v_outputVector_2.end(),0.0);
+                            std::fill(v_outputMatrix_2.begin(),v_outputMatrix_2.end(),0.0);
+                            std::fill(v_outputIntegrals_2.begin(),v_outputIntegrals_2.end(),0.0);
+                        }
+
+
+                        doubIntStr->mat_n1n2.resize(eNN_1,nNodeDOFs,eNN_2,nNodeDOFs);
+                        doubIntStr->mat_n1c2.resize(eNN_1,nNodeDOFs,nCellDOFs);
+                        doubIntStr->mat_c1n2.resize(nCellDOFs,eNN_2,nNodeDOFs);
+                        doubIntStr->mat_c1c2.resize(nCellDOFs,nCellDOFs);
+                        doubIntStr->mat_n2n1.resize(eNN_2,nNodeDOFs,eNN_1,nNodeDOFs);
+                        doubIntStr->mat_n2c1.resize(eNN_2,nNodeDOFs,nCellDOFs);
+                        doubIntStr->mat_c2n1.resize(nCellDOFs,eNN_1,nNodeDOFs);
+                        doubIntStr->mat_c2c1.resize(nCellDOFs,nCellDOFs);
+                        
+                        std::fill(v_outputMatrix_i.begin(),v_outputMatrix_i.end(),0.0);
                     }
-                    
-                    loc_tissIntegrals += singIntStr_2->tissIntegrals;
-                    cellIntegrals_2 += singIntStr_2->cellIntegrals;
-                    
-                    //Assemble
-                    #pragma omp critical
-                    AssembleElementalVector(   offsetDOFs_2, eNN_2,  nNodeDOFs, adjEN_2, singIntStr_2->vec_n.data(), _vector);
-                    
-                    #pragma omp critical
-                    _assembleElementalMatrix( offsetDOFs_2,    offsetDOFs_2, eNN_2, eNN_2,  nNodeDOFs,  nNodeDOFs, adjEN_2, adjEN_2, singIntStr_2->mat_nn.data(), _matrix );
-                    
-                    if(_cellDOFsInt)
-                    {
-                        #pragma omp critical
-                        AssembleElementalVector(  offsetglobFields_2,     1, nCellDOFs,  &dummy, singIntStr_2->vec_c.data(), _vector);
 
-                        #pragma omp critical
-                        _assembleElementalMatrix( offsetDOFs_2,   offsetglobFields_2, eNN_2,     1,  nNodeDOFs, nCellDOFs, adjEN_2,  &dummy, singIntStr_2->mat_nc.data(), _matrix );
-                        #pragma omp critical
-                        _assembleElementalMatrix( offsetglobFields_2,   offsetDOFs_2,     1, eNN_2, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_2, singIntStr_2->mat_cn.data(), _matrix );
-                        #pragma omp critical
-                        _assembleElementalMatrix( offsetglobFields_2,  offsetglobFields_2,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, singIntStr_2->mat_cc.data(), _matrix );
-                    }
-
-                    //Interaction between cells
-                    #pragma omp critical
-                    _assembleElementalMatrix( offsetDOFs_1, offsetDOFs_2, eNN_1, eNN_2,  nNodeDOFs,  nNodeDOFs, adjEN_1, adjEN_2, doubIntStr->mat_n1n2.data(), _matrix );
+                    int k = _elems_inte[inte][h][2];
+                    int l = _elems_inte[inte][h][3];
                     
-                    #pragma omp critical
-                    _assembleElementalMatrix( offsetDOFs_2, offsetDOFs_1, eNN_2, eNN_1,  nNodeDOFs,  nNodeDOFs, adjEN_2, adjEN_1, doubIntStr->mat_n2n1.data(), _matrix );
-
-                    if(_cellDOFsInt)
-                    {
-                        #pragma omp critical
-                        _assembleElementalMatrix(offsetDOFs_1,  offsetglobFields_2, eNN_1,     1,  nNodeDOFs, nCellDOFs, adjEN_1,  &dummy, doubIntStr->mat_n1c2.data(), _matrix);
-                        #pragma omp critical
-                        _assembleElementalMatrix(offsetglobFields_2,  offsetDOFs_1,     1, eNN_1, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_1, doubIntStr->mat_c2n1.data(), _matrix);
-
-                        #pragma omp critical
-                        _assembleElementalMatrix( offsetglobFields_1, offsetDOFs_2,    1, eNN_2, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_2,  doubIntStr->mat_c1n2.data(), _matrix);
-                        #pragma omp critical
-                        _assembleElementalMatrix(offsetDOFs_2,  offsetglobFields_1, eNN_2,     1,  nNodeDOFs, nCellDOFs, adjEN_2,  &dummy, doubIntStr->mat_n2c1.data(), _matrix);
-                        #pragma omp critical
-                        _assembleElementalMatrix(offsetglobFields_1,   offsetglobFields_2,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, doubIntStr->mat_c1c2.data(), _matrix);
-                        #pragma omp critical
-                        _assembleElementalMatrix(offsetglobFields_2,   offsetglobFields_1,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, doubIntStr->mat_c2c1.data(), _matrix);
-                    }
+                    singIntStr_1->bfs = savedBFs_type_1->operator[](k);
+                    singIntStr_1->w_sample = _wSamples_intera[k];
+                    singIntStr_2->bfs = savedBFs_type_2->operator[](l);
+                    singIntStr_2->w_sample = _wSamples_intera[l];
+                     _doubleIntegrand(doubIntStr);
+                                        
                     e0 = e;
+                    g0 = g;
                 }
 
                 loc_tissIntegrals += singIntStr_1->tissIntegrals;
@@ -655,6 +671,52 @@ namespace ias
                     _assembleElementalMatrix( offsetglobFields_1,  offsetglobFields_1,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, singIntStr_1->mat_cc.data(), _matrix );
                 }
                 
+                loc_tissIntegrals += singIntStr_2->tissIntegrals;
+                cellIntegrals_2 += singIntStr_2->cellIntegrals;
+                            
+                //Assemble
+                #pragma omp critical
+                AssembleElementalVector(   offsetDOFs_2, eNN_2,  nNodeDOFs, adjEN_2, singIntStr_2->vec_n.data(), _vector);
+                
+                #pragma omp critical
+                _assembleElementalMatrix( offsetDOFs_2,    offsetDOFs_2, eNN_2, eNN_2,  nNodeDOFs,  nNodeDOFs, adjEN_2, adjEN_2, singIntStr_2->mat_nn.data(), _matrix );
+                
+                if(_cellDOFsInt)
+                {
+                    #pragma omp critical
+                    AssembleElementalVector(  offsetglobFields_2,     1, nCellDOFs,  &dummy, singIntStr_2->vec_c.data(), _vector);
+
+                    #pragma omp critical
+                    _assembleElementalMatrix( offsetDOFs_2,   offsetglobFields_2, eNN_2,     1,  nNodeDOFs, nCellDOFs, adjEN_2,  &dummy, singIntStr_2->mat_nc.data(), _matrix );
+                    #pragma omp critical
+                    _assembleElementalMatrix( offsetglobFields_2,   offsetDOFs_2,     1, eNN_2, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_2, singIntStr_2->mat_cn.data(), _matrix );
+                    #pragma omp critical
+                    _assembleElementalMatrix( offsetglobFields_2,  offsetglobFields_2,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, singIntStr_2->mat_cc.data(), _matrix );
+                }
+
+                #pragma omp critical
+                _assembleElementalMatrix( offsetDOFs_1, offsetDOFs_2, eNN_1, eNN_2,  nNodeDOFs,  nNodeDOFs, adjEN_1, adjEN_2, doubIntStr->mat_n1n2.data(), _matrix );
+                
+                #pragma omp critical
+                _assembleElementalMatrix( offsetDOFs_2, offsetDOFs_1, eNN_2, eNN_1,  nNodeDOFs,  nNodeDOFs, adjEN_2, adjEN_1, doubIntStr->mat_n2n1.data(), _matrix );
+
+                if(_cellDOFsInt)
+                {
+                    #pragma omp critical
+                    _assembleElementalMatrix(offsetDOFs_1,  offsetglobFields_2, eNN_1,     1,  nNodeDOFs, nCellDOFs, adjEN_1,  &dummy, doubIntStr->mat_n1c2.data(), _matrix);
+                    #pragma omp critical
+                    _assembleElementalMatrix(offsetglobFields_2,  offsetDOFs_1,     1, eNN_1, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_1, doubIntStr->mat_c2n1.data(), _matrix);
+
+                    #pragma omp critical
+                    _assembleElementalMatrix( offsetglobFields_1, offsetDOFs_2,    1, eNN_2, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_2,  doubIntStr->mat_c1n2.data(), _matrix);
+                    #pragma omp critical
+                    _assembleElementalMatrix(offsetDOFs_2,  offsetglobFields_1, eNN_2,     1,  nNodeDOFs, nCellDOFs, adjEN_2,  &dummy, doubIntStr->mat_n2c1.data(), _matrix);
+                    #pragma omp critical
+                    _assembleElementalMatrix(offsetglobFields_1,   offsetglobFields_2,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, doubIntStr->mat_c1c2.data(), _matrix);
+                    #pragma omp critical
+                    _assembleElementalMatrix(offsetglobFields_2,   offsetglobFields_1,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, doubIntStr->mat_c2c1.data(), _matrix);
+                }
+
                 #pragma omp critical
                 tissIntegrals += loc_tissIntegrals;
                 
@@ -781,5 +843,92 @@ namespace ias
                 n++;
             }
         }
+    }
+
+    bool Integration::calculateInteractingGaussPoints(double eps)
+    {
+        using namespace std;
+        using namespace Tensor;
+        using Teuchos::RCP;
+
+        _elems_inte.resize(_tissue->_inters[_tissue->getMyPart()].size());
+        
+        int change{};
+        
+        for(size_t inte = 0; inte < _tissue->_inters[_tissue->_myPart].size(); inte ++)
+        {
+            int glo_1 = _tissue->_inters[_tissue->_myPart][inte].first;
+            int glo_2 = _tissue->_inters[_tissue->_myPart][inte].second;
+
+            RCP<Cell> cell_1 = _tissue->GetCell(glo_1);
+            RCP<Cell> cell_2 = _tissue->GetCell(glo_2);
+
+            vector<array<int,4>> elems_inte;
+
+            vtkSmartPointer<vtkPoints> points_2 = vtkSmartPointer<vtkPoints>::New();
+            for(int e = 0; e < cell_2->getNumberOfElements(); e++)
+            {
+                int eNN_2 = cell_2->_bfs->getNumberOfNeighbours(e);
+                tensor<double,2> nborCoords(eNN_2,3);
+                for(int i=0; i < eNN_2; i++)
+                {
+                    int ii = cell_2->_bfs->getNeighbours(e)[i];
+                    nborCoords(i,all) = cell_2->_nodeFields(ii,range(0,2));
+                }
+                for(int k = 0; k < _iPts_intera; k++)
+                {
+                    tensor<double,1> bfs(_savedBFs_intera[cell_2->_bfs->getElementType(e)][k][0].data(),eNN_2);
+                    tensor<double,1> x = bfs * nborCoords;
+                    points_2->InsertNextPoint(x(0),x(1),x(2));
+                }
+            }
+            vtkSmartPointer<vtkPolyData> polydata_2 = vtkSmartPointer<vtkPolyData>::New();
+            polydata_2->SetPoints(points_2);
+
+            vtkNew<vtkPointLocator> pointTree;
+            pointTree->SetDataSet(polydata_2);
+            pointTree->BuildLocator();
+
+            for(int e = 0; e < cell_1->getNumberOfElements(); e++)
+            {
+                int eNN_1 = cell_1->_bfs->getNumberOfNeighbours(e);
+                tensor<double,2> nborCoords(eNN_1,3);
+                for(int i=0; i < eNN_1; i++)
+                {
+                    int ii = cell_1->_bfs->getNeighbours(e)[i];
+                    nborCoords(i,all) = cell_1->_nodeFields(ii,range(0,2));
+                }
+                for(int k = 0; k < _iPts_intera; k++)
+                {
+                    tensor<double,1> bfs(_savedBFs_intera[cell_1->_bfs->getElementType(e)][k][0].data(),eNN_1);
+                    tensor<double,1> x = bfs * nborCoords;
+
+                    vtkNew<vtkIdList> result;
+                    pointTree->FindPointsWithinRadius(eps, x.data(), result);
+
+                    vtkIdType n = result->GetNumberOfIds();
+                    for(int g = 0; g < n; g++)
+                    {
+                        int elemId = result->GetId(g)/_iPts_intera;
+                        int kPtId = result->GetId(g)%_iPts_intera;
+                        elems_inte.push_back({e,elemId,k,kPtId});   
+                    }        
+                }
+            }
+
+            sort(elems_inte.begin(),elems_inte.end());
+
+            if(_elems_inte[inte] != elems_inte)
+            {
+                _elems_inte[inte] = elems_inte;
+                change = 1;
+            }
+        }
+        
+        
+        MPI_Allreduce(MPI_IN_PLACE, &change, 1, MPI_INT, MPI_MAX, _tissue->_comm);
+        
+        return bool(change);
+        
     }
 }

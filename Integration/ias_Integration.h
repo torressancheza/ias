@@ -202,6 +202,8 @@ namespace ias
 
             std::vector<void *> userAuxiliaryObjects;
         
+            bool calculateInteractingGaussPoints(double eps);
+
         private:
         
             std::function<void(Teuchos::RCP<SingleIntegralStr>)> _singleIntegrand = nullptr;
@@ -220,6 +222,7 @@ namespace ias
             Teuchos::RCP<Epetra_FEVector> _cellIntegrals = Teuchos::null;
             Tensor::tensor<double,1> _tissIntegrals;
 
+            std::vector<std::vector<std::array<int,4>>> _elems_inte;
 
             int _iPts_single{};
             std::vector<double> _wSamples_single;

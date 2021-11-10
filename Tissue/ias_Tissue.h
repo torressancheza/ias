@@ -87,8 +87,6 @@ namespace ias
             void balanceDistribution();
             /*! @brief send and receive all ghost cell info (fields) */
             void updateGhosts(bool updateNodeFields = true, bool updateGlobalFields = true, bool UpdateConnectivity = false);
-            /*! @brief send and receive all ghost cell info (fields) */
-            bool calculateInteractingElements(double eps);
             /** @} */
 
             
@@ -220,7 +218,6 @@ namespace ias
             std::vector<int>                _cellFieldOffset;        ///<(local) Jumps in the fields from one cell to the next (used mostly for addVectorToFields)
             Teuchos::RCP<Epetra_FECrsGraph> _adjyCC = Teuchos::null; ///<(distrib) Cell-cell adjacency
             std::vector<std::vector<std::pair<int,int>>> _inters;
-            std::vector<std::vector<std::pair<int,int>>> _elems_inte;
             int _nCells{};                                           ///<(shared) Total number of cells
         
             double _eps{};

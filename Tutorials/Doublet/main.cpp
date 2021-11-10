@@ -126,11 +126,10 @@ int main(int argc, char **argv)
         tissue->calculateCellCellAdjacency(3.0*intCL+intEL);
         tissue->updateGhosts();
         tissue->balanceDistribution();
-        
-        tissue->calculateInteractingElements(intEL+3.0*intCL);
-        
+                
         tissue->getTissField("time") = 0.0;
         tissue->getTissField("deltat") = deltat;
+        tissue->getTissField("Ei") = 0.0;
 
         for(auto cell: tissue->getLocalCells())
         { 
@@ -148,7 +147,6 @@ int main(int argc, char **argv)
 
             cell->getCellField("V0") = 4.0*M_PI/3.0;
         }
-        tissue->saveVTK("Cell","_t"+to_string(0));
     }
     else
     {
@@ -158,7 +156,6 @@ int main(int argc, char **argv)
         tissue->calculateCellCellAdjacency(3.0*intCL+intEL);
         tissue->balanceDistribution();
         tissue->updateGhosts();
-        tissue->calculateInteractingElements(intEL+3.0*intCL);
         
         deltat = tissue->getTissField("deltat");
         for(auto cell: tissue->getLocalCells())
@@ -168,11 +165,11 @@ int main(int argc, char **argv)
             cell->getNodeField("vz") *= deltat;
         }
     }
-    tissue->saveVTK("Cell","_t"+to_string(1));
+    tissue->saveVTK("Cell","_t"+to_string(0));
 
     RCP<ParametrisationUpdate> paramUpdate = rcp(new ParametrisationUpdate);
     paramUpdate->setTissue(tissue);
-    paramUpdate->setMethod(ParametrisationUpdate::Method::ALE);
+    paramUpdate->setMethod(ParametrisationUpdate::Method::Eulerian);
     paramUpdate->setRemoveRigidBodyTranslation(true);
     paramUpdate->setRemoveRigidBodyRotation(true);
     paramUpdate->setDisplacementFieldNames({"vx","vy","vz"});
@@ -189,21 +186,12 @@ int main(int argc, char **argv)
     physicsIntegration->setTissIntegralFields({"Ei"});
     physicsIntegration->setCellDOFsInInteractions(false);
     physicsIntegration->Update();
+    physicsIntegration->calculateInteractingGaussPoints(intEL+3.0*intCL);
 
 
     RCP<solvers::TrilinosBelos> physicsLinearSolver = rcp(new solvers::TrilinosBelos);
     physicsLinearSolver->setIntegration(physicsIntegration);
     physicsLinearSolver->setSolverType("GMRES");
-    // physicsLinearSolver->addBelosParameter( "Num Blocks", "300" );               // Maximum number of blocks in Krylov factorization
-    // physicsLinearSolver->addBelosParameter( "Block Size", "1");                  // Blocksize to be used by iterative solver
-    // physicsLinearSolver->addBelosParameter( "Maximum Restarts", "10" );           // Maximum number of restarts allowed
-    // physicsLinearSolver->addBelosParameter( "Verbosity", "33");
-    // physicsLinearSolver->addBelosParameter( "Output Frequency", "1" );
-    // physicsLinearSolver->addBelosParameter("Output Style", "1" );
-    // physicsLinearSolver->addAztecOOParameter("solver","gmres");
-    // physicsLinearSolver->addAztecOOParameter("precond","dom_decomp");
-    // physicsLinearSolver->addAztecOOParameter("subdomain_solve","ilu");
-    // physicsLinearSolver->addAztecOOParameter("output","none");
     physicsLinearSolver->setMaximumNumberOfIterations(5000);
     physicsLinearSolver->setResidueTolerance(1.E-8);
     physicsLinearSolver->Update();
@@ -248,7 +236,7 @@ int main(int argc, char **argv)
         tissue->updateGhosts();
         
         if(conv)
-            rec_str = max(rec_str,tissue->calculateInteractingElements(intEL+3.0*intCL));
+            rec_str = max(rec_str, physicsIntegration->calculateInteractingGaussPoints(intEL+3.0*intCL));
         else if(rec_str)
         {
             physicsIntegration->recalculateMatrixStructure();
