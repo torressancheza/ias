@@ -165,9 +165,7 @@ int main(int argc, char **argv)
         tissue->calculateCellCellAdjacency(3.0*intCL+intEL);
         tissue->updateGhosts();
         tissue->balanceDistribution();
-        
-        tissue->calculateInteractingElements(intEL+3.0*intCL);
-        
+                
         tissue->getTissField("time") = 0.0;
         tissue->getTissField("deltat") = deltat;
         tissue->getTissField("kConfin") = kConfin;
@@ -203,7 +201,6 @@ int main(int argc, char **argv)
         tissue->calculateCellCellAdjacency(3.0*intCL+intEL);
         tissue->balanceDistribution();
         tissue->updateGhosts();
-        tissue->calculateInteractingElements(intEL+3.0*intCL);
         
         deltat = tissue->getTissField("deltat");
         for(auto cell: tissue->getLocalCells())
@@ -234,6 +231,7 @@ int main(int argc, char **argv)
     physicsIntegration->setTissIntegralFields({"Ei"});
     physicsIntegration->setCellDOFsInInteractions(false);
     physicsIntegration->Update();
+    physicsIntegration->calculateInteractingGaussPoints(intEL+3.0*intCL);
 
     RCP<solvers::TrilinosAztecOO> physicsLinearSolver = rcp(new solvers::TrilinosAztecOO);
     physicsLinearSolver->setIntegration(physicsIntegration);
@@ -290,7 +288,7 @@ int main(int argc, char **argv)
         std::chrono::duration<double> elapsed_1 = finish_1 - start;
 
         if(conv)
-            rec_str = max(rec_str,tissue->calculateInteractingElements(intEL+3.0*intCL));
+            rec_str = max(rec_str,    physicsIntegration->calculateInteractingGaussPoints(intEL+3.0*intCL));
         else if(rec_str)
         {
             physicsIntegration->recalculateMatrixStructure();
