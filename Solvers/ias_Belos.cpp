@@ -120,9 +120,16 @@ namespace ias
 
             _solver->setProblem(_problem);
 
-            Belos::ReturnType _ret = _solver->solve();
-
-            _converged = _ret == Belos::Converged;
+            Belos::ReturnType ret;
+            try
+            {
+                ret = _solver->solve();
+            }
+            catch(Belos::StatusTestError& err)
+            {
+                cout << err.what() << endl;
+            }
+            _converged = ret == Belos::Converged;
             _nIter = _solver->getNumIters();
         }
     }
