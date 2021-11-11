@@ -54,6 +54,8 @@ namespace ias
             while(not conv)
             {
                 iter++;
+                if(_calcInt)
+                    _integration->calculateInteractingGaussPoints();
                 _integration->fillVectorWithScalar(0.0);
                 _integration->fillSolutionWithScalar(0.0);
                 _integration->fillMatrixWithScalar(0.0);

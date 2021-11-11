@@ -169,7 +169,7 @@ int main(int argc, char **argv)
 
     RCP<ParametrisationUpdate> paramUpdate = rcp(new ParametrisationUpdate);
     paramUpdate->setTissue(tissue);
-    paramUpdate->setMethod(ParametrisationUpdate::Method::Eulerian);
+    paramUpdate->setMethod(ParametrisationUpdate::Method::ALE);
     paramUpdate->setRemoveRigidBodyTranslation(true);
     paramUpdate->setRemoveRigidBodyRotation(true);
     paramUpdate->setDisplacementFieldNames({"vx","vy","vz"});
@@ -185,8 +185,9 @@ int main(int argc, char **argv)
     physicsIntegration->setNumberOfIntegrationPointsDoubleIntegral(3);
     physicsIntegration->setTissIntegralFields({"Ei"});
     physicsIntegration->setCellDOFsInInteractions(false);
+    physicsIntegration->setDisplacementFieldNames("vx","vy","vz");
+    physicsIntegration->setCutoffLength(intEL+3.0*intCL);
     physicsIntegration->Update();
-    physicsIntegration->calculateInteractingGaussPoints(intEL+3.0*intCL);
 
 
     RCP<solvers::TrilinosBelos> physicsLinearSolver = rcp(new solvers::TrilinosBelos);
@@ -202,6 +203,7 @@ int main(int argc, char **argv)
     physicsNewtonRaphson->setResidueTolerance(nr_restol);
     physicsNewtonRaphson->setMaximumNumberOfIterations(nr_maxite);
     physicsNewtonRaphson->setVerbosity(true);
+    physicsNewtonRaphson->setUpdateInteractingGaussPointsPerIteration(true);
     physicsNewtonRaphson->Update();
 
     for(auto cell: tissue->getLocalCells())
@@ -236,7 +238,7 @@ int main(int argc, char **argv)
         tissue->updateGhosts();
         
         if(conv)
-            rec_str = max(rec_str, physicsIntegration->calculateInteractingGaussPoints(intEL+3.0*intCL));
+            rec_str = max(rec_str, physicsIntegration->getRecalculateMatrixStructure());
         else if(rec_str)
         {
             physicsIntegration->recalculateMatrixStructure();

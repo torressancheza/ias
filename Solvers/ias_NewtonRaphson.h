@@ -67,6 +67,10 @@ namespace ias
                 /*! @brief Set if the solver should be verbose*/
                 void setVerbosity(bool verbose)
                 {    _verbose = verbose;    }
+                /*! @brief Set if interacting gauss points need to be recalculated every iteration*/
+                void setUpdateInteractingGaussPointsPerIteration(bool calcInt)
+                {    _calcInt = calcInt;    }
+
                 /** @} */
 
                 /*! @brief Get residuals*/
@@ -82,6 +86,7 @@ namespace ias
                 double _solTol{};
                 bool   _convRel{};
                 bool   _verbose{};
+                bool   _calcInt{};
                 std::vector<double> _ressError;
         };
     }

@@ -202,7 +202,13 @@ namespace ias
 
             std::vector<void *> userAuxiliaryObjects;
         
-            bool calculateInteractingGaussPoints(double eps);
+            void setDisplacementFieldNames(std::string displNameX, std::string displNameY, std::string displNameZ)
+            {   _displNames = {displNameX,displNameY,displNameZ};    }
+            void calculateInteractingGaussPoints();
+            void setCutoffLength(double deltaInter)
+            {    _deltaInter = deltaInter;    }
+            bool getRecalculateMatrixStructure()
+            {    return _rec_str;    }
 
         private:
         
@@ -223,6 +229,9 @@ namespace ias
             Tensor::tensor<double,1> _tissIntegrals;
 
             std::vector<std::vector<std::array<int,4>>> _elems_inte;
+            std::vector<std::string> _displNames{};
+            double _deltaInter{};
+            bool _rec_str{};
 
             int _iPts_single{};
             std::vector<double> _wSamples_single;

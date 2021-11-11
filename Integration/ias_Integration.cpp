@@ -845,7 +845,7 @@ namespace ias
         }
     }
 
-    bool Integration::calculateInteractingGaussPoints(double eps)
+    void Integration::calculateInteractingGaussPoints()
     {
         using namespace std;
         using namespace Tensor;
@@ -874,6 +874,12 @@ namespace ias
                 {
                     int ii = cell_2->_bfs->getNeighbours(e)[i];
                     nborCoords(i,all) = cell_2->_nodeFields(ii,range(0,2));
+                    if(_displNames.size() == 3)
+                    {
+                        nborCoords(i,0) += cell_2->getNodeField(_displNames[0])(ii);
+                        nborCoords(i,1) += cell_2->getNodeField(_displNames[1])(ii);
+                        nborCoords(i,2) += cell_2->getNodeField(_displNames[2])(ii);
+                    }
                 }
                 for(int k = 0; k < _iPts_intera; k++)
                 {
@@ -897,6 +903,13 @@ namespace ias
                 {
                     int ii = cell_1->_bfs->getNeighbours(e)[i];
                     nborCoords(i,all) = cell_1->_nodeFields(ii,range(0,2));
+
+                    if(_displNames.size() == 3)
+                    {
+                        nborCoords(i,0) += cell_1->getNodeField(_displNames[0])(ii);
+                        nborCoords(i,1) += cell_1->getNodeField(_displNames[1])(ii);
+                        nborCoords(i,2) += cell_1->getNodeField(_displNames[2])(ii);
+                    }
                 }
                 for(int k = 0; k < _iPts_intera; k++)
                 {
@@ -904,7 +917,7 @@ namespace ias
                     tensor<double,1> x = bfs * nborCoords;
 
                     vtkNew<vtkIdList> result;
-                    pointTree->FindPointsWithinRadius(eps, x.data(), result);
+                    pointTree->FindPointsWithinRadius(_deltaInter, x.data(), result);
 
                     vtkIdType n = result->GetNumberOfIds();
                     for(int g = 0; g < n; g++)
@@ -927,8 +940,7 @@ namespace ias
         
         
         MPI_Allreduce(MPI_IN_PLACE, &change, 1, MPI_INT, MPI_MAX, _tissue->_comm);
-        
-        return bool(change);
-        
+
+        _rec_str = max(_rec_str,change);        
     }
 }

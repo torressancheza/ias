@@ -699,7 +699,7 @@ namespace ias
             _inGhostCells[i]->_connec.set_pointer(&_inGhost_connec[_inGhost_connec_offsetCells[i]]);
             _inGhostCells[i]->_connec.resize(InGhostnElem[i],InGhostnVert[i]);
 
-            _inGhostCells[i]->_cellFieldNames = _nodeFieldNames;
+            _inGhostCells[i]->_nodeFieldNames = _nodeFieldNames;
             _inGhostCells[i]->_cellFieldNames = _cellFieldNames;
             
             _inGhostCells[i]->_bfType = static_cast<BasisFunctionType>(InGhostBFType[i]);
