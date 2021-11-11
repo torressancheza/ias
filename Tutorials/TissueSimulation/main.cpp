@@ -230,8 +230,9 @@ int main(int argc, char **argv)
     physicsIntegration->setNumberOfIntegrationPointsDoubleIntegral(3);
     physicsIntegration->setTissIntegralFields({"Ei"});
     physicsIntegration->setCellDOFsInInteractions(false);
+    physicsIntegration->setDisplacementFieldNames("vx","vy","vz");
+    physicsIntegration->setCutoffLength(intEL+3.0*intCL);
     physicsIntegration->Update();
-    physicsIntegration->calculateInteractingGaussPoints(intEL+3.0*intCL);
 
     RCP<solvers::TrilinosAztecOO> physicsLinearSolver = rcp(new solvers::TrilinosAztecOO);
     physicsLinearSolver->setIntegration(physicsIntegration);
@@ -249,6 +250,7 @@ int main(int argc, char **argv)
     physicsNewtonRaphson->setResidueTolerance(1.E-8);
     physicsNewtonRaphson->setMaximumNumberOfIterations(5);
     physicsNewtonRaphson->setVerbosity(true);
+    physicsNewtonRaphson->setUpdateInteractingGaussPointsPerIteration(true);
     physicsNewtonRaphson->Update();
 
     for(auto cell: tissue->getLocalCells())
@@ -288,7 +290,7 @@ int main(int argc, char **argv)
         std::chrono::duration<double> elapsed_1 = finish_1 - start;
 
         if(conv)
-            rec_str = max(rec_str,    physicsIntegration->calculateInteractingGaussPoints(intEL+3.0*intCL));
+            rec_str = max(rec_str, physicsIntegration->getRecalculateMatrixStructure());
         else if(rec_str)
         {
             physicsIntegration->recalculateMatrixStructure();
