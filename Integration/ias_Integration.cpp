@@ -941,6 +941,6 @@ namespace ias
         
         MPI_Allreduce(MPI_IN_PLACE, &change, 1, MPI_INT, MPI_MAX, _tissue->_comm);
 
-        _rec_str = max(_rec_str,change);        
+        _rec_str = _rec_str ? _rec_str : static_cast<bool>(change);       
     }
 }
