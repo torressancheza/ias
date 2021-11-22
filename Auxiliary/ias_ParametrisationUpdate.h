@@ -45,10 +45,15 @@ namespace ias
              /*! @brief Set method */
             void setMethod( Method method)
             {    _method = method;    }
-            
+
+            /*! @brief Set Maximum deltat (ALE) */
+            void setMaximumTimeStep(double deltatMax)
+            {    _deltatMax = deltatMax;    _ale_param_set = true;    }
+
             /*! @brief Set inplane friction (ALE) */
             void setInPlaneFriction(double friction)
             {    _tfriction = friction;    _ale_param_set = true;    }
+
              /*! @brief Set penalty shear (ALE)*/
             void setPenaltyShear(double penaltyShear)
             {    _penaltyShear = penaltyShear;    _ale_param_set = true;    }
@@ -85,6 +90,7 @@ namespace ias
             double _elastRef{1.E-1};
             double _penaltyShear{1.E0};
             double _penaltyStretch{1.E-1};
+            double _deltatMax{1.E-2};
             std::vector<std::string> _dispFieldNames;
             std::vector<Teuchos::RCP<Cell>> _cells;
             std::vector<Teuchos::RCP<Tissue>> _tissues;
