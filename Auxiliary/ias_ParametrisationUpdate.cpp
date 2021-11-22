@@ -369,6 +369,8 @@ namespace ias
 
                                 n++;
                             }
+
+                            tissue->getTissField("deltat") = std::min(tissue->getTissField("deltat"),_deltatMax);
                         }
 
                         if(conv)
