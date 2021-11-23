@@ -12,6 +12,7 @@
 #include <vtkLinearSubdivisionFilter.h>
 #include <vtkLoopSubdivisionFilter.h>
 #include <vtkCleanPolyData.h>
+#include <vtkReverseSense.h>
 
 #include "Tensor.h"
 
@@ -35,8 +36,17 @@ namespace ias
         subdivisionFilter->SetInputData(source->GetOutput());
         dynamic_cast<vtkLinearSubdivisionFilter *> (subdivisionFilter.GetPointer())->SetNumberOfSubdivisions(nSubdiv);
         subdivisionFilter->Update();
+        vtkSmartPointer<vtkPolyData> vtkoutput = subdivisionFilter->GetOutput();
+
+        if(type == VTK_SOLID_OCTAHEDRON)
+        {
+            vtkSmartPointer<vtkReverseSense> reverseSense = vtkSmartPointer<vtkReverseSense>::New();
+            reverseSense->SetInputData(vtkoutput);
+            reverseSense->ReverseCellsOn();
+            reverseSense->Update();
+            vtkoutput = reverseSense->GetOutput();
+        }
         
-        auto vtkoutput = subdivisionFilter->GetOutput();
         
         int nPts  = vtkoutput->GetNumberOfPoints();
         int nElem = vtkoutput->GetNumberOfCells();
