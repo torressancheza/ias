@@ -40,6 +40,7 @@ int main(int argc, char **argv)
     double R{1.0};
     int nSubdiv{3};
     
+    bool endWhenDivision{true};
     bool restart{false};
     string resLocation;
     string resFileName;
@@ -130,6 +131,9 @@ int main(int argc, char **argv)
         config.readInto(resFileName, "resFileName");
         
         config.readInto(updateMethod, "updateMethod");
+
+        config.readInto(endWhenDivision, "endWhenDivision");
+
         
         if(updateMethod.compare("eulerian")!=0 and updateMethod.compare("ale") != 0)
             throw runtime_error("Update method not understood. It should be either \"eulerian\" or \"ALE\"");
@@ -345,6 +349,9 @@ int main(int argc, char **argv)
 
                 if(division)
                 {
+                    if(endWhenDivision)
+                        break;
+
                     tissue->cellDivision(divCells, intEL, 4*M_PI/tissue->getLocalCells()[0]->getNumberOfElements());
 
                     tissue->calculateCellCellAdjacency(3.0*intCL+intEL);
