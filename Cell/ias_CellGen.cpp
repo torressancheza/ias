@@ -38,7 +38,7 @@ namespace ias
         subdivisionFilter->Update();
         vtkSmartPointer<vtkPolyData> vtkoutput = subdivisionFilter->GetOutput();
 
-        if(type == VTK_SOLID_OCTAHEDRON)
+        if(type == VTK_SOLID_ICOSAHEDRON)
         {
             vtkSmartPointer<vtkReverseSense> reverseSense = vtkSmartPointer<vtkReverseSense>::New();
             reverseSense->SetInputData(vtkoutput);

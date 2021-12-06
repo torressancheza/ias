@@ -59,6 +59,7 @@ namespace ias
             auto B = Teuchos::rcpFromRef(*_integration->getLinearProblem()->GetRHS());
             _problem = Teuchos::rcp(new Belos::LinearProblem<ST, MV, OP>(A, X, B));
 
+            _ifpackParamList = rcp(new Teuchos::ParameterList);
             for(size_t i = 0; i < _ifpackParams.size(); i++)
             {
                 //Try to transform the string into a number
@@ -66,12 +67,10 @@ namespace ias
                 char* p;
                 int converted =  (param, &p, 10);
                 if (*p) 
-                    _ifpackParamList.set(_ifpackNameParams[i], param);
+                    _ifpackParamList->set(_ifpackNameParams[i], param);
                 else 
-                    _ifpackParamList.set(_ifpackNameParams[i], converted);
+                    _ifpackParamList->set(_ifpackNameParams[i], converted);
             }
-
-            _problem->setLeftPrec(_belosPrecond);
 
             RCP<Teuchos::ParameterList> params = rcp(new Teuchos::ParameterList);
             params->set("Maximum Iterations", _maxIter); // Maximum number of iterations allowed
@@ -108,7 +107,7 @@ namespace ias
             {
                 Ifpack Factory;
                 _precond = rcp(Factory.Create(_precondType, A.getRawPtr(), 0));
-                _precond->SetParameters(_ifpackParamList);
+                _precond->SetParameters(*_ifpackParamList);
                 _precond->Initialize();
                 _precond->Compute();
                 _belosPrecond = rcp (new Belos::EpetraPrecOp (_precond));
