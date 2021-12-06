@@ -372,6 +372,9 @@ int main(int argc, char **argv)
                         cell->getCellField("V0") = cell->getCellField("V");
                     }
                     deltat = 1.E-6;
+
+                    if(endWhenDivision)
+                        tissue->getTissField("deltat") = deltat;
                 }
    
                 time += deltat;
