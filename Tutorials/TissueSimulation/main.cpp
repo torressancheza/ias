@@ -372,10 +372,6 @@ int main(int argc, char **argv)
                         cell->getCellField("V0") = cell->getCellField("V");
                     }
                     deltat = 1.E-6;
-
-                    if(endWhenDivision)
-                        break;
-
                 }
    
                 time += deltat;
@@ -395,6 +391,9 @@ int main(int argc, char **argv)
                     cell->getNodeField("vy") *= deltat;
                     cell->getNodeField("vz") *= deltat;
                 }
+                
+                if(division and endWhenDivision)
+                        break;
 
                 if(nIter < nr_maxite)
                 {
