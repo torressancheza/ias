@@ -132,6 +132,7 @@ int main(int argc, char **argv)
         
         config.readInto(updateMethod, "updateMethod");
 
+        config.readInto(lifetime, "lifetime");
         config.readInto(endWhenDivision, "endWhenDivision");
 
         
