@@ -349,9 +349,6 @@ int main(int argc, char **argv)
 
                 if(division)
                 {
-                    if(endWhenDivision)
-                        break;
-
                     tissue->cellDivision(divCells, intEL, 4*M_PI/tissue->getLocalCells()[0]->getNumberOfElements());
 
                     tissue->calculateCellCellAdjacency(3.0*intCL+intEL);
@@ -374,6 +371,10 @@ int main(int argc, char **argv)
                         cell->getCellField("V0") = cell->getCellField("V");
                     }
                     deltat = 1.E-6;
+
+                    if(endWhenDivision)
+                        break;
+
                 }
    
                 time += deltat;
