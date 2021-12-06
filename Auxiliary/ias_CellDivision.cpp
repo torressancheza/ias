@@ -130,7 +130,6 @@ namespace ias
                 cells->InsertNextCell(element);
             }
         }
-        // cout << "AQUI 2 " << endl;
 
         for(auto& c: cellsToAdd)
         {
@@ -321,8 +320,6 @@ namespace ias
             auto polydata_b2 = edges2->GetOutput();
             
             polydata_2->BuildLinks();
-
-            // cout << "LLEGO AQUI 1" << endl;
 
             //Check that boundaries match with each other
             if(polydata_b->GetPoints()->GetNumberOfPoints()!=polydata_b2->GetPoints()->GetNumberOfPoints())

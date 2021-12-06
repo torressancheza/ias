@@ -38,8 +38,6 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     
     int idx_x = fill->idxNodeField("x");
     int idx_z = fill->idxNodeField("z");
-    int idx_xR = fill->idxNodeField("xR");
-    int idx_zR = fill->idxNodeField("zR");
     int idx_vx = fill->idxNodeField("vx");
     int idx_vz = fill->idxNodeField("vz");
 
@@ -49,13 +47,6 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     tensor<double,1> cConfin = tissFields(range(fill->idxTissField("cConfinX"),fill->idxTissField("cConfinZ")));
 
     //[2] CALCULATIONS
-    tensor<double,1>       xR = bfs * nborFields(all,range(idx_xR,idx_zR));
-    tensor<double,2>      DxR = Dbfs.T() * nborFields(all,range(idx_xR,idx_zR));
-    tensor<double,1>   crossR = DxR(1,all) * antisym3D * DxR(0,all);
-    double               jacR = sqrt(crossR*crossR);
-    tensor<double,1>  normalR = crossR/jacR;
-    double               xRnR = xR * normalR;
-
     //[2.1] Geometry in the configuration at previous time-step
     tensor<double,1>       x0 = bfs * nborFields(all,range(idx_x,idx_z));
     tensor<double,2>      Dx0 = Dbfs.T() * nborFields(all,range(idx_x,idx_z));
@@ -138,10 +129,14 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     rhs_n += fill->w_sample * tension *  djac;
     A_nn  += fill->w_sample * tension * ddjac;
 
+    double V0 = cellFields(fill->idxCellField("V0")) * (1.0 + cellFields(fill->idxCellField("tCycle"))/cellFields(fill->idxCellField("lifetime")));
+
     // [3.4] Volume constraint
     rhs_n          += fill->w_sample * pressure * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
-    rhs_g(0)       += deltat * (fill->w_sample * (jac * xn-jacR * xRnR)/3.0);
-        
+    rhs_g(0)       += deltat * fill->w_sample * (jac * xn)/3.0;
+    if(fill->elemID == 0 and fill->sampID == 0)
+        rhs_g(0) -= deltat * V0;
+
     A_nn           += fill->w_sample * pressure * deltat / 3.0 * (ddjac * xn + outer(djac,outer(bfs,normal)) + outer(outer(bfs,normal),djac) + outer(djac,dnormal*x) + outer(dnormal*x,djac) + jac * outer(dnormal,bfs).transpose({0,1,3,2}) +  jac * outer(bfs,dnormal).transpose({0,3,1,2}) + jac * ddnormal * x);
     A_ng(all,all,0) += fill->w_sample            * deltat / 3.0 * (djac * xn + jac * outer(bfs,normal) + jac * dnormal * x);
     A_gn = A_ng.transpose({2,0,1});
@@ -177,6 +172,7 @@ void internal(Teuchos::RCP<ias::SingleIntegralStr> fill)
     rhs_n += fill->w_sample * (jac * dcPot + cPot * djac);
     A_nn  += fill->w_sample * (jac * outer(bfs, outer(bfs, ddx_cPot)).transpose({0,2,1,3}) + outer(dcPot, djac) + outer(djac, dcPot) + cPot * ddjac);
 
+    fill->cellIntegrals(fill->idxCellIntegral("V")) += fill->w_sample * jac * xn/3.0;
 
 }
 
@@ -269,6 +265,6 @@ void interaction(Teuchos::RCP<ias::DoubleIntegralStr> inter)
         A_nn_12 += ww * ( pot * outer(djac_1,djac_2) + jac_1 * dpot/dist * outer(aux_1,djac_2) + jac_2 * dpot/dist * outer(djac_1,aux_2) + jac_1 * jac_2 * ((ddpot-dpot/dist)/(dist*dist) * outer(aux_1,aux_2) - dpot/dist * outer(bfs_1,outer(bfs_2,Identity(3))).transpose({0,2,1,3}) ));
         A_nn_21 += ww * ( pot * outer(djac_2,djac_1) + jac_2 * dpot/dist * outer(aux_2,djac_1) + jac_1 * dpot/dist * outer(djac_2,aux_1) + jac_1 * jac_2 * ((ddpot-dpot/dist)/(dist*dist) * outer(aux_2,aux_1) - dpot/dist * outer(bfs_2,outer(bfs_1,Identity(3))).transpose({0,2,1,3}) ));
 
-        inter->fillStr1->tissIntegrals(inter->fillStr1->idxTissIntegral("Ei")) += ww * jac_1 * jac_2;
+        // inter->fillStr1->tissIntegrals(inter->fillStr1->idxTissIntegral("Ei")) += ww * jac_1 * jac_2;
     }
 }

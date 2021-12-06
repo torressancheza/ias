@@ -277,6 +277,7 @@ namespace ias
                 cell->getNodeField("y") += cell->getNodeField(_dispFieldNames[1]);
                 cell->getNodeField("z") += cell->getNodeField(_dispFieldNames[2]);
             }
+            _tissue->updateGhosts();
         }
         else
         {

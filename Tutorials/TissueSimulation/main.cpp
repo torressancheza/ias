@@ -12,7 +12,7 @@
 #include <random>
 #include <chrono>
 
-#include <AztecOO.h>
+#include <ias_Belos.h>
 
 #include "aux.h"
 #include "ias_ParametrisationUpdate.h"
@@ -145,9 +145,9 @@ int main(int argc, char **argv)
         tissueGen->addNodeFields({"vx","vy","vz"});
         tissueGen->addNodeFields({"x0","y0","z0"});
         tissueGen->addNodeFields({"vx0","vy0","vz0"});
-        tissueGen->addNodeFields({"xR","yR","zR"});
 
         tissueGen->addCellFields({"P", "P0"});
+        tissueGen->addCellFields({"V","V0"});
         tissueGen->addCellFields({"lifetime", "tCycle"});
 
         tissueGen->addCellFields({"intEL","intCL","intSt","tension","kappa","viscosity","frictiont","frictionn"});
@@ -190,6 +190,10 @@ int main(int argc, char **argv)
             cell->getCellField("viscosity") = viscosity;
             cell->getCellField("frictiont") = frictiont;
             cell->getCellField("frictionn") = frictionn;
+
+            cell->getCellField("V0") = 4.0*M_PI/3.0;
+            cell->getCellField("lifetime") = lifetime;
+            cell->getCellField("tCycle") = 0.0;
         }
         tissue->saveVTK("Cell","_t"+to_string(0));
     }
@@ -228,18 +232,16 @@ int main(int argc, char **argv)
     physicsIntegration->setDoubleIntegrand(interaction);
     physicsIntegration->setNumberOfIntegrationPointsSingleIntegral(3);
     physicsIntegration->setNumberOfIntegrationPointsDoubleIntegral(3);
+    physicsIntegration->setCellIntegralFields({"V"});
     physicsIntegration->setTissIntegralFields({"Ei"});
     physicsIntegration->setCellDOFsInInteractions(false);
     physicsIntegration->setDisplacementFieldNames("vx","vy","vz");
     physicsIntegration->setCutoffLength(intEL+3.0*intCL);
     physicsIntegration->Update();
 
-    RCP<solvers::TrilinosAztecOO> physicsLinearSolver = rcp(new solvers::TrilinosAztecOO);
+    RCP<solvers::TrilinosBelos> physicsLinearSolver = rcp(new solvers::TrilinosBelos);
     physicsLinearSolver->setIntegration(physicsIntegration);
-    physicsLinearSolver->addAztecOOParameter("solver","gmres");
-    physicsLinearSolver->addAztecOOParameter("precond","dom_decomp");
-    physicsLinearSolver->addAztecOOParameter("subdomain_solve","ilu");
-    physicsLinearSolver->addAztecOOParameter("output","none");
+    physicsLinearSolver->setSolverType("GMRES");
     physicsLinearSolver->setMaximumNumberOfIterations(5000);
     physicsLinearSolver->setResidueTolerance(1.E-8);
     physicsLinearSolver->Update();
@@ -252,13 +254,6 @@ int main(int argc, char **argv)
     physicsNewtonRaphson->setVerbosity(true);
     physicsNewtonRaphson->setUpdateInteractingGaussPointsPerIteration(true);
     physicsNewtonRaphson->Update();
-
-    for(auto cell: tissue->getLocalCells())
-    {
-        cell->getNodeField("xR") = cell->getNodeField("x");
-        cell->getNodeField("yR") = cell->getNodeField("y");
-        cell->getNodeField("zR") = cell->getNodeField("z");
-    }
 
     int step{};
     double time = tissue->getTissField("time");
@@ -308,9 +303,10 @@ int main(int argc, char **argv)
         if(tissue->getMyPart()==0)
             cout << "Solving for velocities" << endl;
         
-        // physicsNewtonRaphson->solve();
+        physicsNewtonRaphson->solve();
         conv = physicsNewtonRaphson->getConvergence();
-        conv = true;
+
+
 
         auto finish_3 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_3 = finish_3 - finish_2;
@@ -330,7 +326,49 @@ int main(int argc, char **argv)
             {
                 if(tissue->getMyPart()==0)
                     cout << "Solved!"  << endl;
+
+
+                vector<int> divCells;
+                for(auto cell: tissue->getLocalCells())
+                {
+                    cell->getCellField("tCycle") += deltat;
+                    if(cell->getCellField("tCycle") > cell->getCellField("lifetime"))
+                    {
+                        divCells.push_back(cell->getCellField("cellId"));
+                        cell->getCellField("tCycle") = 0.0;
+                    }
+                }
                 
+                int division{};
+                division = divCells.size() > 0;
+                MPI_Allreduce(MPI_IN_PLACE, &division, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+
+                if(division)
+                {
+                    tissue->cellDivision(divCells, intEL, 4*M_PI/tissue->getLocalCells()[0]->getNumberOfElements());
+
+                    tissue->calculateCellCellAdjacency(3.0*intCL+intEL);
+                    tissue->balanceDistribution();
+                    tissue->updateGhosts();
+                    physicsIntegration->Update();
+                    physicsLinearSolver->Update();
+                    rec_str = false;
+                    paramUpdate->Update();
+
+                    physicsIntegration->InitialiseCellIntegralFields(0.0);
+                    physicsIntegration->computeSingleIntegral();
+                    physicsIntegration->assemble();
+
+                    for(auto cell: tissue->getLocalCells())
+                    {
+                        cell->getNodeField("vx") = 0.0;
+                        cell->getNodeField("vy") = 0.0;
+                        cell->getNodeField("vz") = 0.0;
+                        cell->getCellField("V0") = cell->getCellField("V");
+                    }
+                    deltat = 1.E-6;
+                }
+   
                 time += deltat;
                 tissue->getTissField("time") = time;
                 // tissue->getTissField("tConfin") += dt_tConfin * deltat;
