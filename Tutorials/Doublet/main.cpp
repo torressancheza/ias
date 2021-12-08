@@ -112,7 +112,6 @@ int main(int argc, char **argv)
         tissueGen->addNodeFields({"vx","vy","vz"});
         tissueGen->addNodeFields({"x0","y0","z0"});
         tissueGen->addNodeFields({"vx0","vy0","vz0"});
-        tissueGen->addNodeFields({"xR","yR","zR"});
 
         tissueGen->addCellFields({"P", "P0"});
         tissueGen->addCellFields({"intEL","intCL","intSt","tension","kappa","viscosity","frictiont","frictionn"});
@@ -169,7 +168,7 @@ int main(int argc, char **argv)
 
     RCP<ParametrisationUpdate> paramUpdate = rcp(new ParametrisationUpdate);
     paramUpdate->setTissue(tissue);
-    paramUpdate->setMethod(ParametrisationUpdate::Method::ALE);
+    paramUpdate->setMethod(ParametrisationUpdate::Method::Lagrangian);
     paramUpdate->setRemoveRigidBodyTranslation(true);
     paramUpdate->setRemoveRigidBodyRotation(true);
     paramUpdate->setDisplacementFieldNames({"vx","vy","vz"});
@@ -205,13 +204,6 @@ int main(int argc, char **argv)
     physicsNewtonRaphson->setVerbosity(true);
     physicsNewtonRaphson->setUpdateInteractingGaussPointsPerIteration(true);
     physicsNewtonRaphson->Update();
-
-    for(auto cell: tissue->getLocalCells())
-    {
-        cell->getNodeField("xR") = cell->getNodeField("x");
-        cell->getNodeField("yR") = cell->getNodeField("y");
-        cell->getNodeField("zR") = cell->getNodeField("z");
-    }
 
     int step{};
     double time = tissue->getTissField("time");
@@ -261,8 +253,39 @@ int main(int argc, char **argv)
             int nIter = physicsNewtonRaphson->getNumberOfIterations();
             
             conv = paramUpdate->UpdateParametrisation();
+          
+                // int remesh{};
+                // for(auto cell: tissue->getLocalCells())
+                // {
+                //     double quality = cell->getMeshQuality();
 
-            
+                //     if(quality < 0.05)
+                //     {
+                //         double tArea = 2.0*M_PI/cell->getNumberOfElements();
+                //         cell->remesh(tArea);
+                //         remesh = 1;
+                //     }
+                // }
+                // MPI_Allreduce(MPI_IN_PLACE, &remesh, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+                // if(remesh)
+                // {
+                //     tissue->balanceDistribution();
+                //     tissue->updateGhosts();
+                //     physicsIntegration->Update();
+                //     physicsLinearSolver->Update();
+                //     rec_str = false;
+                //     paramUpdate->Update();
+
+                //     for(auto cell: tissue->getLocalCells())
+                //     {
+                //         cell->getNodeField("vx") = 0.0;
+                //         cell->getNodeField("vy") = 0.0;
+                //         cell->getNodeField("vz") = 0.0;
+                //     }
+
+                //     deltat *= 0.00001;
+                // }
+
             if (conv)
             {
                 if(tissue->getMyPart()==0)
@@ -298,6 +321,7 @@ int main(int argc, char **argv)
                 if(deltat > maxDeltat)
                     deltat = maxDeltat;
                 step++;
+
 
             }
             else
