@@ -188,10 +188,7 @@ int main(int argc, char **argv)
             cell->getCellField("intCL") = intCL;
             cell->getCellField("intSt") = intSt;
             cell->getCellField("kappa") = kappa;
-            if(tissue->getNumberOfCells()==2 and cell->getCellField("cellId")==1)
-                cell->getCellField("tension") = 0.25 * tension;
-            else
-                cell->getCellField("tension") = tension;
+            cell->getCellField("tension") = tension;
             cell->getCellField("viscosity") = viscosity;
             cell->getCellField("frictiont") = frictiont;
             cell->getCellField("frictionn") = frictionn;

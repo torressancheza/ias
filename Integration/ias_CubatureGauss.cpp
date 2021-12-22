@@ -9,6 +9,7 @@
 
 #include <math.h>
 #include <iostream>
+#include <stdexcept>
 
 #include "ias_CubatureGauss.h"
 
@@ -45,6 +46,8 @@ namespace ias
 
     void CubatureGauss::_checkSettings()
     {
+        using namespace std;
+
         // Line quadrature rule
         if (_pDim==1)
         {
@@ -60,10 +63,7 @@ namespace ias
             else if (this->_iPts == 10){}
             else if (this->_iPts == 15){}
             else
-            {
-                printf("ERROR: the number of Gauss points (%d) is wrong (see documentation)\n",_iPts);
                 throw runtime_error("CubatureGauss: CheckSettings failed!!");
-            }
         }
         else if (_pDim==2)
         {
@@ -74,10 +74,7 @@ namespace ias
             else if (this->_iPts  ==   7){}
             else if (this->_iPts  ==  12){}
             else
-            {
-                printf("ERROR: the number of Gauss points (%d) is wrong (see documentation)\n",_iPts);
                 throw runtime_error("CubatureGauss: CheckSettings failed!!");
-            }
         }
 
     }
