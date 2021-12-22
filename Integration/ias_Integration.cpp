@@ -494,14 +494,14 @@ namespace ias
                 cellIntegrals_1 = 0.0;
                 cellIntegrals_2 = 0.0;
 
-                #pragma omp for private(e0,g0)
+                #pragma omp for
                 for(size_t h = 0; h <  _elems_inte[inte].size(); h++)
-                {
+                { 
                     int e =  _elems_inte[inte][h][0];
                     int g =  _elems_inte[inte][h][1];
                     if(e != e0 or g != g0)
                     {
-                        if(e != e0 and e0!=-1)
+                        if(e != e0 and e0 != -1)
                         {
                             loc_tissIntegrals += singIntStr_1->tissIntegrals;
                             cellIntegrals_1 += singIntStr_1->cellIntegrals;
@@ -524,7 +524,7 @@ namespace ias
                                 _assembleElementalMatrix( offsetglobFields_1,  offsetglobFields_1,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, singIntStr_1->mat_cc.data(), _matrix );
                             }
                         }
-                        if(g != g0  and g0!=-1)
+                        if(g != g0  and g0 != -1)
                         {
                             loc_tissIntegrals += singIntStr_2->tissIntegrals;
                             cellIntegrals_2 += singIntStr_2->cellIntegrals;

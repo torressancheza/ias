@@ -168,7 +168,7 @@ int main(int argc, char **argv)
 
     RCP<ParametrisationUpdate> paramUpdate = rcp(new ParametrisationUpdate);
     paramUpdate->setTissue(tissue);
-    paramUpdate->setMethod(ParametrisationUpdate::Method::Lagrangian);
+    paramUpdate->setMethod(ParametrisationUpdate::Method::ALE);
     paramUpdate->setRemoveRigidBodyTranslation(true);
     paramUpdate->setRemoveRigidBodyRotation(true);
     paramUpdate->setDisplacementFieldNames({"vx","vy","vz"});
