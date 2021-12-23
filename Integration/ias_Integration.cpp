@@ -313,7 +313,6 @@ namespace ias
             
             if (glo_n == glo_m)
                 continue;
-            
             if(_elems_inte[inte].size() == 0)
                 continue;
             
@@ -651,84 +650,87 @@ namespace ias
                     g0 = g;
                 }
 
-                loc_tissIntegrals += singIntStr_1->tissIntegrals;
-                cellIntegrals_1 += singIntStr_1->cellIntegrals;
-
-                #pragma omp critical
-                AssembleElementalVector( offsetDOFs_1,  singIntStr_1->eNN,  nNodeDOFs, adjEN_1, singIntStr_1->vec_n.data(), _vector);
-                #pragma omp critical
-                _assembleElementalMatrix( offsetDOFs_1,    offsetDOFs_1, singIntStr_1->eNN, singIntStr_1->eNN,  nNodeDOFs,  nNodeDOFs, adjEN_1, adjEN_1, singIntStr_1->mat_nn.data(), _matrix );
-                
-                if(_cellDOFsInt)
+                if(e0!=-1 and g0!=-1)
                 {
-                    #pragma omp critical
-                    AssembleElementalVector( offsetglobFields_1,     1, nCellDOFs,  &dummy, singIntStr_1->vec_c.data(), _vector);
+                    loc_tissIntegrals += singIntStr_1->tissIntegrals;
+                    cellIntegrals_1 += singIntStr_1->cellIntegrals;
 
                     #pragma omp critical
-                    _assembleElementalMatrix( offsetDOFs_1,   offsetglobFields_1, singIntStr_1->eNN,     1,  nNodeDOFs, nCellDOFs, adjEN_1,  &dummy, singIntStr_1->mat_nc.data(), _matrix );
+                    AssembleElementalVector( offsetDOFs_1,  singIntStr_1->eNN,  nNodeDOFs, adjEN_1, singIntStr_1->vec_n.data(), _vector);
                     #pragma omp critical
-                    _assembleElementalMatrix( offsetglobFields_1,   offsetDOFs_1,     1, singIntStr_1->eNN, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_1, singIntStr_1->mat_cn.data(), _matrix );
+                    _assembleElementalMatrix( offsetDOFs_1,    offsetDOFs_1, singIntStr_1->eNN, singIntStr_1->eNN,  nNodeDOFs,  nNodeDOFs, adjEN_1, adjEN_1, singIntStr_1->mat_nn.data(), _matrix );
+                    
+                    if(_cellDOFsInt)
+                    {
+                        #pragma omp critical
+                        AssembleElementalVector( offsetglobFields_1,     1, nCellDOFs,  &dummy, singIntStr_1->vec_c.data(), _vector);
+
+                        #pragma omp critical
+                        _assembleElementalMatrix( offsetDOFs_1,   offsetglobFields_1, singIntStr_1->eNN,     1,  nNodeDOFs, nCellDOFs, adjEN_1,  &dummy, singIntStr_1->mat_nc.data(), _matrix );
+                        #pragma omp critical
+                        _assembleElementalMatrix( offsetglobFields_1,   offsetDOFs_1,     1, singIntStr_1->eNN, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_1, singIntStr_1->mat_cn.data(), _matrix );
+                        #pragma omp critical
+                        _assembleElementalMatrix( offsetglobFields_1,  offsetglobFields_1,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, singIntStr_1->mat_cc.data(), _matrix );
+                    }
+                    
+                    loc_tissIntegrals += singIntStr_2->tissIntegrals;
+                    cellIntegrals_2 += singIntStr_2->cellIntegrals;
+                                
+                    //Assemble
                     #pragma omp critical
-                    _assembleElementalMatrix( offsetglobFields_1,  offsetglobFields_1,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, singIntStr_1->mat_cc.data(), _matrix );
-                }
-                
-                loc_tissIntegrals += singIntStr_2->tissIntegrals;
-                cellIntegrals_2 += singIntStr_2->cellIntegrals;
-                            
-                //Assemble
-                #pragma omp critical
-                AssembleElementalVector(   offsetDOFs_2, eNN_2,  nNodeDOFs, adjEN_2, singIntStr_2->vec_n.data(), _vector);
-                
-                #pragma omp critical
-                _assembleElementalMatrix( offsetDOFs_2,    offsetDOFs_2, eNN_2, eNN_2,  nNodeDOFs,  nNodeDOFs, adjEN_2, adjEN_2, singIntStr_2->mat_nn.data(), _matrix );
-                
-                if(_cellDOFsInt)
-                {
+                    AssembleElementalVector(   offsetDOFs_2, eNN_2,  nNodeDOFs, adjEN_2, singIntStr_2->vec_n.data(), _vector);
+                    
                     #pragma omp critical
-                    AssembleElementalVector(  offsetglobFields_2,     1, nCellDOFs,  &dummy, singIntStr_2->vec_c.data(), _vector);
+                    _assembleElementalMatrix( offsetDOFs_2,    offsetDOFs_2, eNN_2, eNN_2,  nNodeDOFs,  nNodeDOFs, adjEN_2, adjEN_2, singIntStr_2->mat_nn.data(), _matrix );
+                    
+                    if(_cellDOFsInt)
+                    {
+                        #pragma omp critical
+                        AssembleElementalVector(  offsetglobFields_2,     1, nCellDOFs,  &dummy, singIntStr_2->vec_c.data(), _vector);
+
+                        #pragma omp critical
+                        _assembleElementalMatrix( offsetDOFs_2,   offsetglobFields_2, eNN_2,     1,  nNodeDOFs, nCellDOFs, adjEN_2,  &dummy, singIntStr_2->mat_nc.data(), _matrix );
+                        #pragma omp critical
+                        _assembleElementalMatrix( offsetglobFields_2,   offsetDOFs_2,     1, eNN_2, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_2, singIntStr_2->mat_cn.data(), _matrix );
+                        #pragma omp critical
+                        _assembleElementalMatrix( offsetglobFields_2,  offsetglobFields_2,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, singIntStr_2->mat_cc.data(), _matrix );
+                    }
 
                     #pragma omp critical
-                    _assembleElementalMatrix( offsetDOFs_2,   offsetglobFields_2, eNN_2,     1,  nNodeDOFs, nCellDOFs, adjEN_2,  &dummy, singIntStr_2->mat_nc.data(), _matrix );
+                    _assembleElementalMatrix( offsetDOFs_1, offsetDOFs_2, eNN_1, eNN_2,  nNodeDOFs,  nNodeDOFs, adjEN_1, adjEN_2, doubIntStr->mat_n1n2.data(), _matrix );
+                    
                     #pragma omp critical
-                    _assembleElementalMatrix( offsetglobFields_2,   offsetDOFs_2,     1, eNN_2, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_2, singIntStr_2->mat_cn.data(), _matrix );
-                    #pragma omp critical
-                    _assembleElementalMatrix( offsetglobFields_2,  offsetglobFields_2,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, singIntStr_2->mat_cc.data(), _matrix );
-                }
+                    _assembleElementalMatrix( offsetDOFs_2, offsetDOFs_1, eNN_2, eNN_1,  nNodeDOFs,  nNodeDOFs, adjEN_2, adjEN_1, doubIntStr->mat_n2n1.data(), _matrix );
 
-                #pragma omp critical
-                _assembleElementalMatrix( offsetDOFs_1, offsetDOFs_2, eNN_1, eNN_2,  nNodeDOFs,  nNodeDOFs, adjEN_1, adjEN_2, doubIntStr->mat_n1n2.data(), _matrix );
-                
-                #pragma omp critical
-                _assembleElementalMatrix( offsetDOFs_2, offsetDOFs_1, eNN_2, eNN_1,  nNodeDOFs,  nNodeDOFs, adjEN_2, adjEN_1, doubIntStr->mat_n2n1.data(), _matrix );
+                    if(_cellDOFsInt)
+                    {
+                        #pragma omp critical
+                        _assembleElementalMatrix(offsetDOFs_1,  offsetglobFields_2, eNN_1,     1,  nNodeDOFs, nCellDOFs, adjEN_1,  &dummy, doubIntStr->mat_n1c2.data(), _matrix);
+                        #pragma omp critical
+                        _assembleElementalMatrix(offsetglobFields_2,  offsetDOFs_1,     1, eNN_1, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_1, doubIntStr->mat_c2n1.data(), _matrix);
 
-                if(_cellDOFsInt)
-                {
-                    #pragma omp critical
-                    _assembleElementalMatrix(offsetDOFs_1,  offsetglobFields_2, eNN_1,     1,  nNodeDOFs, nCellDOFs, adjEN_1,  &dummy, doubIntStr->mat_n1c2.data(), _matrix);
-                    #pragma omp critical
-                    _assembleElementalMatrix(offsetglobFields_2,  offsetDOFs_1,     1, eNN_1, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_1, doubIntStr->mat_c2n1.data(), _matrix);
+                        #pragma omp critical
+                        _assembleElementalMatrix( offsetglobFields_1, offsetDOFs_2,    1, eNN_2, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_2,  doubIntStr->mat_c1n2.data(), _matrix);
+                        #pragma omp critical
+                        _assembleElementalMatrix(offsetDOFs_2,  offsetglobFields_1, eNN_2,     1,  nNodeDOFs, nCellDOFs, adjEN_2,  &dummy, doubIntStr->mat_n2c1.data(), _matrix);
+                        #pragma omp critical
+                        _assembleElementalMatrix(offsetglobFields_1,   offsetglobFields_2,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, doubIntStr->mat_c1c2.data(), _matrix);
+                        #pragma omp critical
+                        _assembleElementalMatrix(offsetglobFields_2,   offsetglobFields_1,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, doubIntStr->mat_c2c1.data(), _matrix);
+                    }
 
                     #pragma omp critical
-                    _assembleElementalMatrix( offsetglobFields_1, offsetDOFs_2,    1, eNN_2, nCellDOFs,  nNodeDOFs,  &dummy, adjEN_2,  doubIntStr->mat_c1n2.data(), _matrix);
-                    #pragma omp critical
-                    _assembleElementalMatrix(offsetDOFs_2,  offsetglobFields_1, eNN_2,     1,  nNodeDOFs, nCellDOFs, adjEN_2,  &dummy, doubIntStr->mat_n2c1.data(), _matrix);
-                    #pragma omp critical
-                    _assembleElementalMatrix(offsetglobFields_1,   offsetglobFields_2,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, doubIntStr->mat_c1c2.data(), _matrix);
-                    #pragma omp critical
-                    _assembleElementalMatrix(offsetglobFields_2,   offsetglobFields_1,     1,     1, nCellDOFs, nCellDOFs,  &dummy,  &dummy, doubIntStr->mat_c2c1.data(), _matrix);
-                }
-
-                #pragma omp critical
-                tissIntegrals += loc_tissIntegrals;
-                
-                for(int i = 0; i < int(_cellIntegralIdx.size()); i++)
-                {
-                    int i1 = glo_n*_cellIntegralIdx.size()+i;
-                    #pragma omp critical
-                    _cellIntegrals->SumIntoGlobalValues(1, &i1, &cellIntegrals_1(i));
-                    int i2 = glo_m*_cellIntegralIdx.size()+i;
-                    #pragma omp critical
-                    _cellIntegrals->SumIntoGlobalValues(1, &i2, &cellIntegrals_2(i));
+                    tissIntegrals += loc_tissIntegrals;
+                    
+                    for(int i = 0; i < int(_cellIntegralIdx.size()); i++)
+                    {
+                        int i1 = glo_n*_cellIntegralIdx.size()+i;
+                        #pragma omp critical
+                        _cellIntegrals->SumIntoGlobalValues(1, &i1, &cellIntegrals_1(i));
+                        int i2 = glo_m*_cellIntegralIdx.size()+i;
+                        #pragma omp critical
+                        _cellIntegrals->SumIntoGlobalValues(1, &i2, &cellIntegrals_2(i));
+                    }
                 }
             }
         }
@@ -932,6 +934,7 @@ namespace ias
 
             sort(elems_inte.begin(),elems_inte.end());
 
+            
             if(_elems_inte[inte] != elems_inte)
             {
                 _elems_inte[inte] = elems_inte;
