@@ -58,7 +58,8 @@ int main(int argc, char **argv)
     double nr_soltol{1.E-8};
 
     int platonicSource{};
-        
+    bool remesh{false};
+
     string  fEnerName{"energies.txt"};
     ofstream fEner;
     
@@ -98,7 +99,9 @@ int main(int argc, char **argv)
         config.readInto(restart, "restart");
         config.readInto(resLocation, "resLocation");
         config.readInto(resFileName, "resFileName");
-                
+
+        config.readInto(remesh, "remesh");
+
     }
     //---------------------------------------------------------------------------
 
@@ -122,6 +125,15 @@ int main(int argc, char **argv)
 
         tissue = tissueGen->genRegularGridSpheres(2, 1, 1, d, 0, 0, R, nSubdiv, platonicSource);
         
+        if(remesh)
+        {
+            for(int i = 0; i < tissue->getLocalNumberOfCells(); i++)
+            {
+                auto cell = tissue->GetCell(i,idxType::local);
+                int nElem = cell->getNumberOfElements();
+                cell->remesh(4.0*M_PI/nElem);
+            }
+        }
         tissue->calculateCellCellAdjacency(3.0*intCL+intEL);
         tissue->updateGhosts();
         tissue->balanceDistribution();
