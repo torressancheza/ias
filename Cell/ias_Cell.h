@@ -215,7 +215,7 @@ namespace ias
             std::map<std::string,int> _mapNodeFieldNames; ///<Map name to field number for nodal fields
             std::map<std::string,int> _mapCellFieldNames; ///<Map name to field number for cell fields
 
-            void _removePoints3Neighbours(vtkSmartPointer<vtkPolyData> polydata);
+            void _removePoints3Neighbours(vtkSmartPointer<vtkPolyData>& polydata);
 
         friend class Tissue;
         friend class TissueGen;

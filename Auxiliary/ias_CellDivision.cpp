@@ -55,7 +55,7 @@
 namespace ias
 {
 
-    void Cell::_removePoints3Neighbours(vtkSmartPointer<vtkPolyData> polydata)
+    void Cell::_removePoints3Neighbours(vtkSmartPointer<vtkPolyData>& polydata)
     {
         using namespace std;
 
@@ -464,7 +464,7 @@ namespace ias
             // cout << "LLEGO AQUI 2" << endl;
 
             _removePoints3Neighbours(polydata_f);
-            
+
             vtkSmartPointer<vtkPolyDataWriter> writer = vtkSmartPointer<vtkPolyDataWriter>::New();
             writer->SetInputData(polydata_f);
             writer->SetFileName("polydata_f.vtk");
