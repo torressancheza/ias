@@ -219,5 +219,83 @@ namespace ias
         
         return tissue;
     }
+
+    Teuchos::RCP<Tissue> TissueGen::genHexagonalGridSpheres(int nx, int ny, double delta, double r, int nSubdiv, int type)
+    {
+        using namespace std;
+        using namespace Tensor;
+        using Teuchos::RCP;
+        using Teuchos::rcp;
+
+        try
+        {
+            _checkFieldNames();
+        }
+        catch (const runtime_error& error)
+        {
+            string what = error.what();
+            throw runtime_error("TissueGen::genRegularGridSphere: " + what);
+        }
+        
+        RCP<Tissue> tissue = rcp(new Tissue);
+
+        tissue->_nCells = nx * ny;
+
+        int loc_nCells{};
+        int baseLocItem = tissue->_nCells / tissue->_nParts;
+        int remain_nItem = tissue->_nCells - baseLocItem * tissue->_nParts;
+        int currOffs = 0;
+        for (int p = 0; p < tissue->_nParts; p++)
+        {
+            int p_locnitem = (p < remain_nItem) ? (baseLocItem + 1) : (baseLocItem);
+
+            tissue->_nCellPart[p]  = p_locnitem;
+            tissue->_offsetPart[p] = currOffs;
+
+            currOffs += p_locnitem;
+        }
+        tissue->_offsetPart[tissue->_nParts] = tissue->_nCells;
+        loc_nCells = tissue->_nCellPart[tissue->getMyPart()];
+
+        RCP<Cell> cell = rcp(new Cell);
+        cell->generateSphereFromPlatonicSolid(nSubdiv, r, type);
+        cell->setBasisFunctionType(_bfType);
+        for(auto f: _nodeFieldNames)
+            cell->addNodeField(f);
+        for(auto f: _cellFieldNames)
+            cell->addCellField(f);
+        cell->Update();
+                                
+        for(int n = 0; n < loc_nCells; n++)
+        {
+            int glo_n = tissue->getGlobalIdx(n);
+            int j = glo_n/nx;
+            int i =  glo_n-j*nx;
+
+            RCP<Cell> newcell = rcp(new Cell);
+            newcell->_connec = cell->_connec;
+            newcell->_nodeFields = cell->_nodeFields;
+            newcell->_cellFields = cell->_cellFields;
+            newcell->_bfType = _bfType;
+            newcell->_nodeFieldNames = cell->_nodeFieldNames;
+            newcell->_cellFieldNames = cell->_cellFieldNames;
+            newcell->Update();
+            
+            newcell->getCellField("cellId") = glo_n;
+
+            newcell->_nodeFields(all,0) += i * delta + (j%2) * delta/2.0;
+            newcell->_nodeFields(all,1) += j * delta * sqrt(3.0)/2.0;
+
+            tissue->_cells.emplace_back(newcell);
+        }
+        
+        tissue->_tissFields.resize(_tissFieldNames.size());
+        tissue->_tissFieldNames = _tissFieldNames;
+        
+        tissue->Update();
+        
+        return tissue;
+    }
+
 }
     

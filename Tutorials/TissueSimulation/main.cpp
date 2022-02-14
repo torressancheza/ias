@@ -42,6 +42,7 @@ int main(int argc, char **argv)
     
     bool endWhenDivision{true};
     bool restart{false};
+    bool hexagonal{false};
     string resLocation;
     string resFileName;
 
@@ -132,6 +133,8 @@ int main(int argc, char **argv)
         
         config.readInto(updateMethod, "updateMethod");
 
+        config.readInto(hexagonal, "hexagonal");
+
         config.readInto(lifetime, "lifetime");
         config.readInto(endWhenDivision, "endWhenDivision");
 
@@ -165,13 +168,18 @@ int main(int argc, char **argv)
         tissueGen->addTissFields({"dConfinX", "dConfinY", "dConfinZ"});
         tissueGen->addTissFields({"cConfinX", "cConfinY", "cConfinZ"});
 
-        tissue = tissueGen->genRegularGridSpheres(nx, ny, nz, dx, dy, dz, R, nSubdiv);
-        
+        if(hexagonal)
+            tissue = tissueGen->genRegularGridSpheres(nx, ny, nz, dx, dy, dz, R, nSubdiv);
+        else
+            tissue = tissueGen->genHexagonalGridSpheres(nx, ny, dx, R, nSubdiv);
+
         tissue->calculateCellCellAdjacency(3.0*intCL+intEL);
         tissue->updateGhosts();
         tissue->balanceDistribution();
                 
         tissue->getTissField("time") = 0.0;
+        tissue->getTissField("Ei") = 0.0;
+
         tissue->getTissField("deltat") = deltat;
         tissue->getTissField("kConfin") = kConfin;
         tissue->getTissField("tConfin") = tConfin;
