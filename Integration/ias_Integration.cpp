@@ -367,7 +367,7 @@ namespace ias
                 singIntStr_1->cellFields.resize(nCellFields_1);
                 singIntStr_1->cellFields = cellFields_1;
                 singIntStr_1->tissFields = _tissue->_tissFields;
-                
+
                 singIntStr_1->tissIntegrals.set_pointer(&v_outputIntegrals_1[0]);
                 singIntStr_1->cellIntegrals.set_pointer(&v_outputIntegrals_1[_tissIntegralIdx.size()]);
                 singIntStr_1->tissIntegrals.resize(_tissIntegralIdx.size());
@@ -389,6 +389,8 @@ namespace ias
                 singIntStr_1->_tissIntegralNames = _tissIntegralNames;
                 singIntStr_1->_mapCellIntegralNames = _mapCellIntegralNames;
                 singIntStr_1->_mapTissIntegralNames = _mapTissIntegralNames;
+
+                singIntStr_1->userAuxiliaryObjects = userAuxiliaryObjects;
 
                 std::vector<double> v_inputFields_2(eNNMax_2*nNodeFields_2+nCellFields_2,0.0);
                 std::vector<double> v_outputVector_2(eNNMax_2*nNodeDOFs+nCellDOFs,0.0);
@@ -419,7 +421,7 @@ namespace ias
                 singIntStr_2->cellFields.resize(nCellFields_2);
                 singIntStr_2->cellFields = cellFields_2;
                 singIntStr_2->tissFields = _tissue->_tissFields;
-                
+
                 singIntStr_2->tissIntegrals.set_pointer(&v_outputIntegrals_2[0]);
                 singIntStr_2->cellIntegrals.set_pointer(&v_outputIntegrals_2[_tissIntegralIdx.size()]);
                 singIntStr_2->tissIntegrals.resize(_tissIntegralIdx.size());
@@ -441,7 +443,9 @@ namespace ias
                 singIntStr_2->_tissIntegralNames = _tissIntegralNames;
                 singIntStr_2->_mapCellIntegralNames = _mapCellIntegralNames;
                 singIntStr_2->_mapTissIntegralNames = _mapTissIntegralNames;
-                
+
+                singIntStr_2->userAuxiliaryObjects = userAuxiliaryObjects;
+
                 RCP<DoubleIntegralStr> doubIntStr   = rcp(new DoubleIntegralStr);
                 doubIntStr->fillStr1 = singIntStr_1;
                 doubIntStr->fillStr2 = singIntStr_2;
@@ -640,10 +644,13 @@ namespace ias
                     int k = _elems_inte[inte][h][2];
                     int l = _elems_inte[inte][h][3];
                     
+                    singIntStr_1->sampID = k;
                     singIntStr_1->bfs = savedBFs_type_1->operator[](k);
                     singIntStr_1->w_sample = _wSamples_intera[k];
+                    singIntStr_2->sampID = l;
                     singIntStr_2->bfs = savedBFs_type_2->operator[](l);
                     singIntStr_2->w_sample = _wSamples_intera[l];
+
                      _doubleIntegrand(doubIntStr);
                                         
                     e0 = e;
