@@ -2,6 +2,11 @@
 
 ## Summary
 
+This is the main code of the project "Interacting Active Surfaces" and follows the ideas in the manuscript:
+
+The code is written in C++, with the idea of storing cells in different partitions and parallelised with MPI and OpenMP. The library makes use of the Trilinos library for the management of linear algebra objects such as vectors and matrices.
+
+The code is structured into different source subfolders ("Auxiliary", "BasisFunctions", "Cell", "Integration", "Solvers", "Tensor" and "Tissue"). The "Extern" folder contains external libraries used for some parts of the code. The folder "Tests" contains some tests that can be ignored. The folder "Tutorials" contains several subfolders that are meant to serve as a way to illustrate the usage of the library and they follow the examples in the manuscript. 
 
 ## Installation
 
