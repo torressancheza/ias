@@ -281,7 +281,7 @@ namespace ias
 
         MPI_Allreduce(MPI_IN_PLACE, tissIntegrals.data(), tissIntegrals.size(), MPI_DOUBLE, MPI_SUM, _tissue->_comm);
         
-        _tissIntegrals = tissIntegrals;
+        _tissIntegrals += tissIntegrals;
     }
 
     void Integration::computeDoubleIntegral()
@@ -744,7 +744,7 @@ namespace ias
         
         MPI_Allreduce(MPI_IN_PLACE, tissIntegrals.data(), tissIntegrals.size(), MPI_DOUBLE, MPI_SUM, _tissue->_comm);
         
-        _tissIntegrals = tissIntegrals;
+        _tissIntegrals += tissIntegrals;
     }
 
 
