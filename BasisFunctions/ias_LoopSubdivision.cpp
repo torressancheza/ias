@@ -172,32 +172,50 @@ namespace ias
         {
             case 0:
             {
-                picking( 3,      2) = 1.0;         picking( 4,     0) = 1.0;
-                picking( 2, eval+3) = 1.0;         picking( 0,     1) = 1.0;
-                picking( 5, eval  ) = 1.0;         picking( 9,eval+8) = 1.0;
-                picking( 1, eval+2) = 1.0;         picking( 6,eval+1) = 1.0;
-                picking(11, eval+4) = 1.0;         picking( 8,eval+7) = 1.0;
-                picking( 7, eval+6) = 1.0;         picking(10,eval+9) = 1.0;
+                picking( 0,      1) = 1.0;
+                picking( 1, eval+2) = 1.0; 
+                picking( 2, eval+3) = 1.0;
+                picking( 3,      2) = 1.0;
+                picking( 4,      0) = 1.0;
+                picking( 5,   eval) = 1.0;     
+                picking( 6, eval+1) = 1.0;
+                picking( 7, eval+6) = 1.0; 
+                picking( 8, eval+7) = 1.0;
+                picking( 9, eval+8) = 1.0;
+                picking(10, eval+9) = 1.0;
+                picking(11, eval+4) = 1.0;         
                 break;
             }
             case 1:
             {
-                picking( 3, eval+9) = 1.0;         picking( 4, eval+6) = 1.0;
-                picking( 2, eval+4) = 1.0;         picking( 0, eval+1) = 1.0;
-                picking( 5, eval+2) = 1.0;         picking( 9, eval+5) = 1.0;
-                picking( 1, eval  ) = 1.0;         picking( 6,      1) = 1.0;
-                picking(11, eval+3) = 1.0;         picking( 8, eval-1) = 1.0;
-                picking( 7,      0) = 1.0;         picking(10,      2) = 1.0;
+                picking( 0, eval+1) = 1.0;
+                picking( 1, eval  ) = 1.0;
+                picking( 2, eval+4) = 1.0;         
+                picking( 3, eval+9) = 1.0;
+                picking( 4, eval+6) = 1.0;
+                picking( 5, eval+2) = 1.0;
+                picking( 6,      1) = 1.0;
+                picking( 7,      0) = 1.0;
+                picking( 8, eval-1) = 1.0; 
+                picking( 9, eval+5) = 1.0;
+                picking(10,      2) = 1.0;
+                picking(11, eval+3) = 1.0;         
                 break;
             }
             case 2:
             {
-                picking( 3,       0) = 1.0;        picking( 4, eval- 1) = 1.0;
-                picking( 2,       1) = 1.0;        picking( 0, eval   ) = 1.0;
-                picking( 5, eval+ 5) = 1.0;        picking( 9, eval+ 2) = 1.0;
-                picking( 1, eval+ 1) = 1.0;        picking( 6, eval+ 4) = 1.0;
-                picking(11, eval+11) = 1.0;        picking( 8, eval+ 6) = 1.0;
-                picking( 7, eval+ 9) = 1.0;        picking(10, eval+10) = 1.0;
+                picking( 0, eval   ) = 1.0;
+                picking( 1, eval+ 1) = 1.0;
+                picking( 2,       1) = 1.0; 
+                picking( 3,       0) = 1.0;
+                picking( 4, eval- 1) = 1.0;
+                picking( 5, eval+ 5) = 1.0;
+                picking( 6, eval+ 4) = 1.0;
+                picking( 7, eval+ 9) = 1.0; 
+                picking( 8, eval+ 6) = 1.0;
+                picking( 9, eval+ 2) = 1.0;
+                picking(10, eval+10) = 1.0;
+                picking(11, eval+11) = 1.0;        
                 break;
             }
             default:
@@ -215,35 +233,6 @@ namespace ias
 
         tensor<double,2> subdiv(eval+12,eval+12);
         subdiv = 0.0;
-        
-        subdiv(range(eval+1,eval+5),range(eval+1,eval+5)) =  {{0.125,  0.0,    0.0,    0.0,    0.0},
-                                                              {0.0625, 0.0625, 0.0625, 0.0,    0.0},
-                                                              {0.0,    0.0,    0.125,  0.0,    0.0},
-                                                              {0.0625, 0.0,    0.0,    0.0625, 0.0625},
-                                                              {0.0,    0.0,    0.0,    0.0,    0.125}};
-        
-        subdiv(range(eval+6,eval+11),range(eval+1,eval+5)) = { {0.375,  0.125,   0.0,    0.0,   0.0},
-                                                               {0.125,  0.375,   0.125,  0.0,   0.0},
-                                                               {0.0,    0.125,   0.375,  0.0,   0.0},
-                                                               {0.375,  0.0,     0.0,    0.125, 0.0},
-                                                               {0.125,  0.0,     0.0,    0.375, 0.125},
-                                                               {0.0,    0.0,     0.0,    0.125, 0.375}};
-
-        double c = 0.375;
-        double d = 0.125;
-
-        // Second line of S
-        subdiv(1,0)=c;      subdiv(1,1)=c;     subdiv(1,2)=d;          subdiv(1,eval)=d;
-        // Last line of matrix S
-        subdiv(eval,0)=c;   subdiv(eval,1)=d;  subdiv(eval,eval-1)=d;  subdiv(eval,eval)=c;
-
-        for(int i = 2; i < eval; i++)
-        {
-            subdiv(i, 0)   = c;
-            subdiv(i, i-1) = d;
-            subdiv(i, i)   = c;
-            subdiv(i, i+1) = d;
-        }
 
         double cs    = cos(2.0*M_PI/(double(eval)));
         double alpha = 5.0/8.0-(3.0+2.0*cs)*(3.0+2.0*cs)/64.0;
@@ -251,20 +240,83 @@ namespace ias
 
         subdiv(0,0) = 1.-alpha;
         subdiv(0,range(1,eval)) = b;
+
+        subdiv(1,   0)=0.375;      
+        subdiv(1,   1)=0.375;     
+        subdiv(1,   2)=0.125;          
+        subdiv(1,eval)=0.125;
+        for(int i = 2; i < eval; i++)
+        {
+            subdiv(i, 0)   = 0.375;
+            subdiv(i, i-1) = 0.125;
+            subdiv(i, i)   = 0.375;
+            subdiv(i, i+1) = 0.125;
+        }
+        subdiv(eval,      0)=0.375;   
+        subdiv(eval,      1)=0.125;  
+        subdiv(eval, eval-1)=0.125;  
+        subdiv(eval,   eval)=0.375;
         
-        subdiv(eval+1,    0) = 0.125;    subdiv(eval+1,      1) = 0.375;   subdiv(eval+1,   eval)  = 0.375;
-        subdiv(eval+2,    0) = 0.0625;   subdiv(eval+2,      1) = 0.625;   subdiv(eval+2,      2) = 0.0625;   subdiv(eval+2, eval) = 0.0625;
-        subdiv(eval+3,    0) = 0.125;    subdiv(eval+3,      1) = 0.375;   subdiv(eval+3,      2) = 0.375;
-        subdiv(eval+4,    0) = 0.0625;   subdiv(eval+4,      1) = 0.0625;  subdiv(eval+4, eval-1) = 0.0625;   subdiv(eval+4, eval) = 0.625;
-        subdiv(eval+5,    0) = 0.125;    subdiv(eval+5, eval-1) = 0.375;   subdiv(eval+5,   eval) = 0.375;
+        subdiv(eval+1,   eval) = 0.375; 
+        subdiv(eval+1,      1) = 0.375;   
+        subdiv(eval+1,      0) = 0.125;    
+        subdiv(eval+1, eval+1) = 0.125; 
+
+        subdiv(eval+2,      1) = 0.625;
+        subdiv(eval+2,      0) = 0.0625;
+        subdiv(eval+2,   eval) = 0.0625;  
+        subdiv(eval+2, eval+1) = 0.0625; 
+        subdiv(eval+2, eval+2) = 0.0625,
+        subdiv(eval+2, eval+3) = 0.0625;
+        subdiv(eval+2,      2) = 0.0625;
         
-        
-        subdiv(eval+ 6,      1) = 0.375;     subdiv(eval+6,  eval) = 0.125;
-        subdiv(eval+ 7,      1) = 0.375;
-        subdiv(eval+ 8,      1) = 0.375;     subdiv(eval+8,     2) = 0.125;
-        subdiv(eval+ 9,      1) = 0.125;     subdiv(eval+9,  eval) = 0.375;
-        subdiv(eval+10, eval  ) = 0.375;
-        subdiv(eval+11, eval-1) = 0.125;     subdiv(eval+11, eval) = 0.375;
+        subdiv(eval+3,      1) = 0.375; 
+        subdiv(eval+3,      2) = 0.375;   
+        subdiv(eval+3,      0) = 0.125;    
+        subdiv(eval+3, eval+3) = 0.125; 
+
+        subdiv(eval+4,   eval) = 0.625;
+        subdiv(eval+4,      0) = 0.0625;
+        subdiv(eval+4,      1) = 0.0625;  
+        subdiv(eval+4, eval+1) = 0.0625; 
+        subdiv(eval+4, eval+4) = 0.0625,
+        subdiv(eval+4, eval+5) = 0.0625;
+        subdiv(eval+4, eval-1) = 0.0625;
+
+        subdiv(eval+5,   eval) = 0.375; 
+        subdiv(eval+5, eval-1) = 0.375;   
+        subdiv(eval+5,      0) = 0.125;    
+        subdiv(eval+5, eval+5) = 0.125; 
+
+        subdiv(eval+6,      1) = 0.375; 
+        subdiv(eval+6, eval+1) = 0.375;   
+        subdiv(eval+6,   eval) = 0.125;    
+        subdiv(eval+6, eval+2) = 0.125; 
+
+        subdiv(eval+7,      1) = 0.375; 
+        subdiv(eval+7, eval+2) = 0.375;   
+        subdiv(eval+7, eval+1) = 0.125;    
+        subdiv(eval+7, eval+3) = 0.125; 
+
+        subdiv(eval+8,      1) = 0.375; 
+        subdiv(eval+8, eval+3) = 0.375;   
+        subdiv(eval+8,      2) = 0.125;    
+        subdiv(eval+8, eval+2) = 0.125; 
+
+        subdiv(eval+9,   eval) = 0.375; 
+        subdiv(eval+9, eval+1) = 0.375;   
+        subdiv(eval+9,      1) = 0.125;    
+        subdiv(eval+9, eval+4) = 0.125; 
+
+        subdiv(eval+10,   eval) = 0.375; 
+        subdiv(eval+10, eval+4) = 0.375;   
+        subdiv(eval+10, eval+1) = 0.125;    
+        subdiv(eval+10, eval+5) = 0.125; 
+
+        subdiv(eval+11,   eval) = 0.375; 
+        subdiv(eval+11, eval+5) = 0.375;   
+        subdiv(eval+11, eval+4) = 0.125;    
+        subdiv(eval+11, eval-1) = 0.125; 
 
         return subdiv;
     }
@@ -279,7 +331,6 @@ namespace ias
         ders[0].resize(12);
         ders[1].resize(2*12);
         ders[2].resize(3*12);
-
 
         double N = static_cast<double>(eval);
 
@@ -337,27 +388,27 @@ namespace ias
 
         // evaluate the number of the required subdivisions
         int na = 0; //number of subdivisions-1
+        double pow2{1.0};
         double min = 0.0;
         double max = 0.5;
 
-        while ( !((u>(min-_eps)) && (u<(max+_eps))) )
+        while ( (u<(min+_eps)) or (u>(max-_eps)) )
         {
+            min = max;
+            max  = max*(1+0.5);
+            pow2 *= 2;
             na++;
-            min  = max;
-            max += pow(2.0,-na-1);
         }
-                
+
         //barycentric coordinates after subdivision
-        double pow2   = pow(2.0, na);
         v  *= pow2;
         w  *= pow2;
         u  = 1.0 - v - w;
+        double jfac = pow2 * 2.0;
 
         //check new barycentric coordinates
         assert( (u<(0.5+_eps)) && (u>-_eps) );
 
-        double jfac = pow(2.0, na+1);
-        
         int type{};
         // coordinate transformation
         if (v > (0.5-_eps))
@@ -389,9 +440,9 @@ namespace ias
         tensor<double,2> subdiv_n = subdiv;
         
         for(int i = 0; i < na; i++)
-            subdiv_n = subdiv_n * subdiv;
+            subdiv_n = subdiv * subdiv_n;
         picking = picking * subdiv_n;
-                
+
         auto boxplines = _computeBoxSplines ({v,w});
         
         vector<std::vector<double>> ders;
@@ -461,87 +512,124 @@ namespace ias
         double w3 = w2*w;
         double w4 = w3*w;
         
-        
-        ders[0][0]     = (6. * u4 + 24. * u3 * w + 24. * u2 * w2 + 8. * u * w3 + w4 + 24. * u3 * v + 60. * u2 * v * w + 36. * u * v * w2 + 6. * v * w3 + 24. * u2 * v2 + 36. * u * v2 * w + 12. * v2 * w2 + 8. * u * v3 + 6. * v3 * w + v4)/12.0;
-        ders[1][2*0+0] = (-4.0 * v3 - 24.0 * v2 * u - 24.0 * v * u2 - 18.0 * v2 * w - 48.0 * v * u * w - 12.0 * u2 * w - 12.0 * v * w2 - 12.0 * u * w2 - 2.0 * w3)/12.0;
-        ders[1][2*0+1] = (-2.0 * v3 - 12.0 * v2 * u - 12.0 * v * u2 - 12.0 * v2 * w - 48.0 * v * u * w - 24.0 * u2 * w - 18.0 * v * w2 - 24.0 * u * w2 - 4.0 * w3)/12.0;
+        ders[0][0]     = u4/2.0 + ((24.0*v + 24.0*w)*u3)/12.0 + 2.0*(v + 2.0*w)*(v + w/2.0)*u2 + ((8.0*v3 + 36.0*v2*w + 36.0*v*w2 + 8.0*w3)*u)/12.0 + v4/12.0 + v3*w/2.0 + v2*w2 + v*w3/2.0 + w4/12.0;
+
+        ders[1][2*0+0] = -v3/3.0 + ((-12.0*u - 9.0*w)*v2)/6.0 + ((-12.0*u2 - 24.0*u*w - 6.0*w2)*v)/6.0 - u2*w - u*w2 - w3/6.0;
+        ders[1][2*0+1] = -v3/6.0 + ((-6.0*u - 6.0*w)*v2)/6.0 + ((-6.0*u2 - 24.0*u*w - 9.0*w2)*v)/6.0 - 2.0*u2*w - 2.0*u*w2 - w3/3.0;
+        // ders[0][0]     = (6. * u4 + 24. * u3 * w + 24. * u2 * w2 + 8. * u * w3 + w4 + 24. * u3 * v + 60. * u2 * v * w + 36. * u * v * w2 + 6. * v * w3 + 24. * u2 * v2 + 36. * u * v2 * w + 12. * v2 * w2 + 8. * u * v3 + 6. * v3 * w + v4)/12.0;
+        // ders[1][2*0+0] = (-4.0 * v3 - 24.0 * v2 * u - 24.0 * v * u2 - 18.0 * v2 * w - 48.0 * v * u * w - 12.0 * u2 * w - 12.0 * v * w2 - 12.0 * u * w2 - 2.0 * w3)/12.0;
+        // ders[1][2*0+1] = (-2.0 * v3 - 12.0 * v2 * u - 12.0 * v * u2 - 12.0 * v2 * w - 48.0 * v * u * w - 24.0 * u2 * w - 18.0 * v * w2 - 24.0 * u * w2 - 4.0 * w3)/12.0;
         ders[2][3*0+0] = v2 - 2.0 * u2 + v * w - 2.0 * u * w;
         ders[2][3*0+1] = -2.0 * v * u - 2.0 * u2 + v * w + w2;
         ders[2][3*0+2] = (6.0 * v2 - 12.0 * u2 + 24.0 * v * w + 6.0 * w2)/12.0;
         
-        ders[0][1]     = (u4 + 6. * u3 * w + 12. * u2 * w2 + 6. * u * w3 + w4 + 8. * u3 * v + 36. * u2 * v * w + 36. * u * v * w2 + 8. * v * w3 + 24. * u2 * v2 + 60. * u * v2 * w + 24. * v2 * w2 + 24. * u * v3 + 24. * v3 * w + 6. * v4)/12.0;
-        ders[1][2*1+0] = (24.0 * v2 * u + 24.0 * v * u2 + 4.0 * u3 + 12.0 * v2 * w + 48.0 * v * u * w + 18.0 * u2 * w + 12.0 * v * w2 + 12.0 * u * w2 + 2.0 * w3)/12.0;
-        ders[1][2*1+1] = (12.0 * v2 * u + 12.0 * v * u2 + 2.0 * u3 - 12.0 * v2 * w + 6.0 * u2 * w - 12.0 * v * w2 - 6.0 * u * w2 - 2.0 * w3)/12.0;
+        ders[0][1]     = u4/12.0 + ((8.0*v + 6.0*w)*u3)/12.0 + 2.0*(v + w)*(v + w/2.0)*u2 + ((24.0*v3 + 60.0*v2*w + 36.0*v*w2 + 6.0*w3)*u)/12.0 + v4/2.0 + 2.0*v3*w + 2.0*v2*w2 + (2.0*v*w3)/3.0 + w4/12.0;
+        ders[1][2*1+0] = u3/3.0 + ((12.0*v + 9.0*w)*u2)/6.0 + ((12.0*v2 + 24*v*w + 6.0*w2)*u)/6.0 + v2*w + v*w2 + w3/6.0;
+        ders[1][2*1+1] = ((u - w)*(u2 + (6.0*v + 4.0*w)*u + 6.0*v2 + 6.0*v*w + w2))/6.0;
+        // ders[0][1]     = (u4 + 6. * u3 * w + 12. * u2 * w2 + 6. * u * w3 + w4 + 8. * u3 * v + 36. * u2 * v * w + 36. * u * v * w2 + 8. * v * w3 + 24. * u2 * v2 + 60. * u * v2 * w + 24. * v2 * w2 + 24. * u * v3 + 24. * v3 * w + 6. * v4)/12.0;
+        // ders[1][2*1+0] = (24.0 * v2 * u + 24.0 * v * u2 + 4.0 * u3 + 12.0 * v2 * w + 48.0 * v * u * w + 18.0 * u2 * w + 12.0 * v * w2 + 12.0 * u * w2 + 2.0 * w3)/12.0;
+        // ders[1][2*1+1] = (12.0 * v2 * u + 12.0 * v * u2 + 2.0 * u3 - 12.0 * v2 * w + 6.0 * u2 * w - 12.0 * v * w2 - 6.0 * u * w2 - 2.0 * w3)/12.0;
         ders[2][3*1+0] = (-24.0 * v2 + 12.0 * u2 - 24.0 * v * w + 12.0 * u * w)/12.0;
         ders[2][3*1+1] = (-24.0 * v2 - 24.0 * v * u - 24.0 * v * w - 24.0 * u * w)/12.0;
         ders[2][3*1+2] = (-12.0 * v2 + 6.0 * u2 - 24.0 * v * w - 12.0 * u * w - 6.0 * w2)/12.0;
-        
-        ders[0][2]     = (u4 + 2. * u3 * w + 6. * u3 * v + 6. * u2 * v * w + 12. * u2 * v2 + 6. * u* v2 * w + 6. * u * v3 + 2. * v3 * w + v4)/12.0;
-        ders[1][2*2+0] = (-2.0 * v3 - 6.0 * v2 * u + 6.0 * v * u2 + 2.0 * u3)/12.0;
-        ders[1][2*2+1] = (-4.0 * v3 - 18.0 * v2 * u - 12.0 * v * u2 - 2.0 * u3 - 6.0 * v2 * w - 12.0 * v * u * w - 6.0 * u2 * w)/12.0;
+
+
+        ders[0][2]     = u4/12.0 + ((6*v + 2*w)*u3)/12.0 + ((12.0*v2 + 6.0*v*w)*u2)/12.0 + v2*(v + w)*u/2.0 + v3*(v + 2.0*w)/12.0;
+        ders[1][2*2+0] = ((u - v)*(u2 + 4.0*u*v + v2))/6.0;
+        ders[1][2*2+1] = -u3/6.0 + ((-6.0*v - 3.0*w)*u2)/6.0 + ((-9.0*v2 - 6.0*v*w)*u)/6.0 - v3/3.0 - v2*w/2.0;
+        // ders[0][2]     = (u4 + 2. * u3 * w + 6. * u3 * v + 6. * u2 * v * w + 12. * u2 * v2 + 6. * u* v2 * w + 6. * u * v3 + 2. * v3 * w + v4)/12.0;
+        // ders[1][2*2+0] = (-2.0 * v3 - 6.0 * v2 * u + 6.0 * v * u2 + 2.0 * u3)/12.0;
+        // ders[1][2*2+1] = (-4.0 * v3 - 18.0 * v2 * u - 12.0 * v * u2 - 2.0 * u3 - 6.0 * v2 * w - 12.0 * v * u * w - 6.0 * u2 * w)/12.0;
         ders[2][3*2+0] = -2.0 * v * u;
-        ders[2][3*2+1] = v2 + v * u + v * w + u * w;;
+        ders[2][3*2+1] = v2 + v * u + v * w + u * w;
         ders[2][3*2+2] = (6.0 * v2 - 12.0 * v * u - 6.0 * u2)/12.0;
-        
-        ders[0][3]     = (u4 + 2. * u3 * v)/12.0;
-        ders[1][2*3+0] = (-6.0 * v * u2 - 2.0 * u3)/12.0;
-        ders[1][2*3+1] = (-6.0 * v * u2 - 4.0 * u3)/12.0;
+
+        ders[0][3]     = u3*(u + 2.0*v)/12.0;
+        ders[1][2*3+0] = -u2*(u + 3.0*v)/6.0;
+        ders[1][2*3+1] = -u3/3.0 - u2*v/2.0;
+        // ders[0][3]     = (u4 + 2. * u3 * v)/12.0;
+        // ders[1][2*3+0] = (-6.0 * v * u2 - 2.0 * u3)/12.0;
+        // ders[1][2*3+1] = (-6.0 * v * u2 - 4.0 * u3)/12.0;
         ders[2][3*3+0] = v*u;
         ders[2][3*3+1] = v*u + u2;
         ders[2][3*3+2] = (12.0 * v * u + 6.0 * u2)/12.0;
 
-        ders[0][4]     = (u4 + 2. * u3 * w)/12.0;
-        ders[1][2*4+0] = (-4.0 * u3 - 6.0 * u2 * w)/12.0;
-        ders[1][2*4+1] = (-2.0 * u3 - 6.0 * u2 * w)/12.0;
+        ders[0][4]     = u3*(u + 2.0*w)/12.0;
+        ders[1][2*4+0] = -u3/3.0 - u2*w/2.0;
+        ders[1][2*4+1] = -u2*(u + 3.0*w)/6.0;
+        // ders[0][4]     = (u4 + 2. * u3 * w)/12.0;
+        // ders[1][2*4+0] = (-4.0 * u3 - 6.0 * u2 * w)/12.0;
+        // ders[1][2*4+1] = (-2.0 * u3 - 6.0 * u2 * w)/12.0;
         ders[2][3*4+0] = u2 + u * w;
         ders[2][3*4+1] = u * w;
         ders[2][3*4+2] = (6.0 * u2 + 12.0 * u * w)/12.0;
-        
-        ders[0][5]     = (u4 + 6. * u3 * w + 12. * u2 * w2 + 6. * u * w3 + w4 + 2. * u3 * v + 6. * u2 * v * w + 6. * u * v * w2 + 2. * v * w3)/12.0;
-        ders[1][2*5+0] = (-6.0 * v * u2 - 2.0 * u3 - 12.0 * v * u * w - 12.0 * u2 * w - 6.0 * v * w2 - 18.0 * u * w2 - 4.0 * w3)/12.0;
-        ders[1][2*5+1] = (2.0 * u3 + 6.0 * u2 * w - 6.0 * u * w2 - 2.0 * w3)/12.0;
+
+        ders[0][5]     = u4/12.0 + ((2.0*v + 6.0*w)*u3)/12.0 + w*(v + 2.0*w)*u2/2.0 + w2*(v + w)*u/2.0 + v*w3/6.0 + w4/12.0;
+        ders[1][2*5+0] = -u3/6.0 + ((-3.0*v - 6.0*w)*u2)/6.0 + ((-6.0*v*w - 9.0*w2)*u)/6.0 - v*w2/2.0 - w3/3.0;
+        ders[1][2*5+1] = ((u - w)*(u2 + 4.0*u*w + w2))/6.0; 
+        // ders[0][5]     = (u4 + 6. * u3 * w + 12. * u2 * w2 + 6. * u * w3 + w4 + 2. * u3 * v + 6. * u2 * v * w + 6. * u * v * w2 + 2. * v * w3)/12.0;
+        // ders[1][2*5+0] = (-6.0 * v * u2 - 2.0 * u3 - 12.0 * v * u * w - 12.0 * u2 * w - 6.0 * v * w2 - 18.0 * u * w2 - 4.0 * w3)/12.0;
+        // ders[1][2*5+1] = (2.0 * u3 + 6.0 * u2 * w - 6.0 * u * w2 - 2.0 * w3)/12.0;
         ders[2][3*5+0] = v * u + v * w + u * w + w2;
         ders[2][3*5+1] = -2.0 * u * w;
         ders[2][3*5+2] = (-6.0 * u2 - 12.0 * u * w + 6.0 * w2)/12.0;
-        
-        ders[0][6]     = (u4 + 8 * u3 * w + 24. * u2 * w2 + 24. * u * w3 + 6. * w4 + 6. * u3 * v + 36. * u2 * v * w + 60. * u * v * w2 + 24. * v * w3 + 12. * u2 * v2 + 36. * u * v2 * w + 24. * v2 * w2 + 6. * u * v3 + 8. * v3 * w + v4)/12.0;
-        ders[1][2*6+0] = (-2.0 * v3 - 6.0 * v2 * u + 6.0 * v * u2 + 2.0 * u3 - 12.0 * v2 * w + 12.0 * u2 * w - 12.0 * v * w2 + 12.0 * u * w2)/12.0;
-        ders[1][2*6+1] = (2.0 * v3 + 12.0 * v2 * u + 18.0 * v * u2 + 4.0 * u3 + 12.0 * v2 * w + 48.0 * v * u * w + 24.0 * u2 * w + 12.0 * v * w2 + 24.0 * u * w2)/12.0;
+
+        ders[0][6]     = u4/12.0 + ((6.0*v + 8.0*w)*u3)/12.0 + (v + 2.0*w)*(v + w)*u2 + ((v + 2.0*w)*(v2 + 4.0*v*w + 2.0*w2)*u)/2.0 + v4/12.0 + (2.0*v3*w)/3.0 + 2.0*v2*w2 + 2.0*v*w3 + w4/2.0;
+        ders[1][2*6+0] = ((u - v)*(u2 + (4.0*v + 6.0*w)*u + v2 + 6.0*v*w + 6.0*w2))/6.0;
+        ders[1][2*6+1] = v3/6.0 + ((6.0*u + 6.0*w)*v2)/6.0 + ((9.0*u2 + 24.0*u*w + 6.0*w2)*v)/6.0 + u3/3.0 + 2.0*u2*w + 2.0*u*w2;
+        // ders[0][6]     = (u4 + 8 * u3 * w + 24. * u2 * w2 + 24. * u * w3 + 6. * w4 + 6. * u3 * v + 36. * u2 * v * w + 60. * u * v * w2 + 24. * v * w3 + 12. * u2 * v2 + 36. * u * v2 * w + 24. * v2 * w2 + 6. * u * v3 + 8. * v3 * w + v4)/12.0;
+        // ders[1][2*6+0] = (-2.0 * v3 - 6.0 * v2 * u + 6.0 * v * u2 + 2.0 * u3 - 12.0 * v2 * w + 12.0 * u2 * w - 12.0 * v * w2 + 12.0 * u * w2)/12.0;
+        // ders[1][2*6+1] = (2.0 * v3 + 12.0 * v2 * u + 18.0 * v * u2 + 4.0 * u3 + 12.0 * v2 * w + 48.0 * v * u * w + 24.0 * u2 * w + 12.0 * v * w2 + 24.0 * u * w2)/12.0;
         ders[2][3*6+0] = -2.0 * v * u - 2.0 * v * w - 2.0 * u * w - 2.0 * w2;
         ders[2][3*6+1] = v * u + u2 - 2.0 * v * w - 2.0 * w2;
         ders[2][3*6+2] = (-6.0 * v2 - 12.0 * v * u + 6.0 * u2 - 24.0 * v * w - 12.0 * w2)/12.0;
-        
-        ders[0][7]     = (2. * u * w3 + w4 + 6. * u * v * w2 + 6. * v * w3 + 6. * u * v2 * w + 12. * v2 * w2 + 2. * u * v3 + 6. * v3 * w + v4)/12.0;
-        ders[1][2*7+0] = (2.0 * v3 + 6.0 * v2 * u + 12.0 * v2 * w + 12.0 * v * u * w + 18.0 * v * w2 + 6.0 * u * w2 + 4.0 * w3)/12.0;
-        ders[1][2*7+1] = (4.0 * v3 + 6.0 * v2 * u + 18.0 * v2 * w + 12.0 * v * u * w + 12.0 * v * w2 + 6.0 * u * w2 + 2.0 * w3)/12.0;
+
+        ders[0][7]     = v4/12.0 + ((2.0*u + 6.0*w)*v3)/12.0 + w*(u + 2*w)*v2/2.0 + w2*(u + w)*v/2.0 + u*w3/6.0 + w4/12.0;
+        ders[1][2*7+0] = v3/6.0 + ((3.0*u + 6.0*w)*v2)/6.0 + ((6.0*u*w + 9.0*w2)*v)/6.0 + u*w2/2.0 + w3/3.0;
+        ders[1][2*7+1] = v3/3.0 + ((3.0*u + 9.0*w)*v2)/6.0 + w*(u + w)*v + u*w2/2.0 + w3/6.0;
+        // ders[0][7]     = (2. * u * w3 + w4 + 6. * u * v * w2 + 6. * v * w3 + 6. * u * v2 * w + 12. * v2 * w2 + 2. * u * v3 + 6. * v3 * w + v4)/12.0;
+        // ders[1][2*7+0] = (2.0 * v3 + 6.0 * v2 * u + 12.0 * v2 * w + 12.0 * v * u * w + 18.0 * v * w2 + 6.0 * u * w2 + 4.0 * w3)/12.0;
+        // ders[1][2*7+1] = (4.0 * v3 + 6.0 * v2 * u + 18.0 * v2 * w + 12.0 * v * u * w + 12.0 * v * w2 + 6.0 * u * w2 + 2.0 * w3)/12.0;
         ders[2][3*7+0] = (12.0 * v * u + 12.0 * v * w + 12.0 * u * w + 12.0 * w2)/12.0;
         ders[2][3*7+1] = v2 + v * u + v * w + u * w;
         ders[2][3*7+2] = (6.0 * v2 + 12.0 * v * u + 24.0 * v * w + 12.0 * u * w + 6.0 * w2)/12.0;
-        
-        ders[0][8]     = (2. * v3 * w + v4)/12.0;
-        ders[1][2*8+0] = (4.0 * v3 + 6.0 * v2 * w)/12.0;
-        ders[1][2*8+1] = (2.0 * v3)/12.0;
+
+        ders[0][8]     = v3*w/6.0 + v4/12.0;
+        ders[1][2*8+0] =  v2*(3.0*w + 2.0*v)/6.0;
+        ders[1][2*8+1] =  v3/6.0;
+        // ders[0][8]     = (2. * v3 * w + v4)/12.0;
+        // ders[1][2*8+0] = (4.0 * v3 + 6.0 * v2 * w)/12.0;
+        // ders[1][2*8+1] = (2.0 * v3)/12.0;
         ders[2][3*8+0] = (12.0*v2 + 12.0 * v * w)/12.0;
         ders[2][3*8+1] = 0.0;
         ders[2][3*8+2] = v2/2.0;
-        
-        ders[0][9]     = (2. * u * v3 + v4)/12.0;
-        ders[1][2*9+0] = (2.0 * v3 + 6.0 * v2 * u)/12.0;
-        ders[1][2*9+1] = (-2.0 * v3)/12.0;
+
+        ders[0][9]     = v3*(2.0*u + v)/12.0;
+        ders[1][2*9+0] = v2*(3.0*u + v)/6.0;
+        ders[1][2*9+1] = -v3/6.0;
+        // ders[0][9]     = (2. * u * v3 + v4)/12.0;
+        // ders[1][2*9+0] = (2.0 * v3 + 6.0 * v2 * u)/12.0;
+        // ders[1][2*9+1] = (-2.0 * v3)/12.0;
         ders[2][3*9+0] = v * u;
         ders[2][3*9+1] = 0.0;
         ders[2][3*9+2] = -v2/2.0;
-        
-        ders[0][10]     = (w4 + 2. * v * w3)/12.0;
-        ders[1][2*10+0] = (2.0 * w3)/12.0;
-        ders[1][2*10+1] = (6.0 * v * w2 + 4.0 * w3)/12.0;
+
+        ders[0][10]     = w3*(w + 2.0*v)/12.0;
+        ders[1][2*10+0] = w3/6.0;
+        ders[1][2*10+1] = w2*(2.0*w + 3.0*v)/6.0;        
+        // ders[0][10]     = (w4 + 2. * v * w3)/12.0;
+        // ders[1][2*10+0] = (2.0 * w3)/12.0;
+        // ders[1][2*10+1] = (6.0 * v * w2 + 4.0 * w3)/12.0;
         ders[2][3*10+0] = 0.0;
         ders[2][3*10+1] = v*w + w2;
         ders[2][3*10+2] = w2/2.0;
 
-        ders[0][11]     = (2. * u * w3 + w4)/12.0;
-        ders[1][2*11+0] = (-2.0 * w3)/12.0;
-        ders[1][2*11+1] = (6.0 * u * w2 + 2.0 * w3)/12.0;
+        ders[0][11]     = w3*(2*u + w)/12.0;
+        ders[1][2*11+0] = -w3/6.0;
+        ders[1][2*11+1] = w2*(3.0*u + w)/6.0;
+        // ders[0][11]     = (2. * u * w3 + w4)/12.0;
+        // ders[1][2*11+0] = (-2.0 * w3)/12.0;
+        // ders[1][2*11+1] = (6.0 * u * w2 + 2.0 * w3)/12.0;
         ders[2][3*11+0] = 0.0;
         ders[2][3*11+1] = u * w;
         ders[2][3*11+2] = -w2/2.0;
