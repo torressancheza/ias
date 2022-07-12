@@ -111,7 +111,8 @@ namespace ias
 
         vtkSmartPointer<vtkUnstructuredGrid> polydata = vtkSmartPointer<vtkUnstructuredGrid>::New();
         vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-                
+        points->SetDataTypeToDouble();
+
         for(int i =0; i < getNumberOfPoints(); i++)
         {
             tensor<double,1> x = _nodeFields(i,all);
